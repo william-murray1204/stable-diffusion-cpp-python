@@ -1,0 +1,38 @@
+[build-system]
+requires = ["scikit-build-core[pyproject]>=0.5.1"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "stable_diffusion_cpp_python"
+dynamic = ["version"]
+description = "Python bindings for the stable-diffusion.cpp library"
+readme = "README.md"
+license = { text = "MIT" }
+authors = ["William Murray <william.murray1204@gmail.com>"]
+dependencies = []
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[tool.scikit-build]
+wheel.packages = ["stable_diffusion_cpp"]
+cmake.verbose = true
+cmake.minimum-version = "3.21"
+minimum-version = "0.5.1"
+sdist.include = [".git", "vendor/stable-diffusion.cpp/.git"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "stable_diffusion_cpp/__init__.py"
+
+[project.urls]
+Homepage = "https://github.com/william-murray1204/stable-diffusion-cpp-python"
+
+[tool.pytest.ini_options]
+testpaths = "tests"

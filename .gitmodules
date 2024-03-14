@@ -1,0 +1,6 @@
+[submodule "vendor/stable-diffusion.cpp"]
+	path = vendor/stable-diffusion.cpp
+	url = https://github.com/leejet/stable-diffusion.cpp
+[submodule "vendor/pycparser"]
+	path = vendor/pycparser
+	url = https://github.com/eliben/pycparser.git
