@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+stable-diffusion.dll
+stable-diffusion.lib
+
 # C extensions
 *.so
 
