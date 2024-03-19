@@ -9,6 +9,18 @@ import ctypes
 from PIL import Image
 
 
+# TODO add enum logic for cpp enums
+# from enum import Enum
+
+# class Color(Enum):
+#     RED = 1
+#     GREEN = 2
+#     BLUE = 3
+
+# print(Color.RED)          # Output: Color.RED
+# print(Color.RED.value)    # Output: 1
+
+
 class StableDiffusion:
     """High-level Python wrapper for a stable-diffusion.cpp model."""
 

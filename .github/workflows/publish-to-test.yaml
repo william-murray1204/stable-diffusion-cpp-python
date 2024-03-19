@@ -1,0 +1,42 @@
+# Based on: https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+
+name: Publish to TestPyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      dev_version:
+        description: "Dev version N"
+        required: true
+
+jobs:
+  build-n-publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+      - name: Append Dev Version to __version__
+        run: |
+          DEV_VERSION=${{ github.event.inputs.dev_version }}
+          CURRENT_VERSION=$(awk -F= '/__version__ =/ {print $2}' stable_diffusion_cpp/__init__.py | tr -d ' "')
+          NEW_VERSION="${CURRENT_VERSION}.dev${DEV_VERSION}"
+          sed -i 's/__version__ = \".*\"/__version__ = \"'"${NEW_VERSION}"'\"/' stable_diffusion_cpp/__init__.py
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip build
+          python3 -m pip install -e .[all]
+      - name: Build source distribution
+        run: |
+          python3 -m build --sdist
+      - name: Publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
