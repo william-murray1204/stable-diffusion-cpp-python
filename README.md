@@ -140,7 +140,6 @@ Below is a short example demonstrating how to use the high-level API to generate
 >>> from stable_diffusion_cpp import StableDiffusion
 >>> stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      # n_gpu_layers=-1, # Uncomment to use GPU acceleration
       # seed=1337, # Uncomment to set a specific seed
 )
 >>> output = stable_diffusion.txt_to_img(
@@ -172,15 +171,26 @@ cd stable-diffusion-cpp-python
 # Upgrade pip (required for editable mode)
 pip install --upgrade pip
 
-# Set the CMAKE_ARGS environment variable
-$env:CMAKE_ARGS="-D SD_BUILD_SHARED_LIBS=ON"
-
 # Install with pip
 pip install -e .
 
 # to clear the local build cache
 make clean
 ```
+
+## To Do
+
+- [ ] test get num cores and other info low level api funcs
+- [ ] Check seed and n_gpu_layers and thread can be -1 and work properly
+- [ ] get img2img working
+- [ ] get img2vid working
+- [ ] Add proper error handling
+- [ ] deploy to PyPI and test installation (CI/CD pipeline github actions)
+- [ ] get GPU acceleration
+- [ ] Get tests working
+- [ ] Add examples to exampels folder
+- [ ] Properly intergaret callback for progress
+- [ ] get Loras working
 
 ## References
 

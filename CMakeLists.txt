@@ -5,7 +5,8 @@ project(stable_diffusion_cpp)
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp shared library and install alongside python package" ON)
 
 if (STABLE_DIFFUSION_BUILD)
-    set(BUILD_SHARED_LIBS "On")
+    set(BUILD_SHARED_LIBS "ON")
+    option(SD_BUILD_SHARED_LIBS "" "ON")
 
     add_subdirectory(vendor/stable-diffusion.cpp)
     install(

@@ -20,8 +20,8 @@ SD_LOG_LEVEL_TO_LOGGING_LEVEL = {
 logger = logging.getLogger("stable-diffusion-cpp-python")
 
 
-@stable_diffusion_cpp.stable_diffusion_log_callback
-def stable_diffusion_log_callback(
+@stable_diffusion_cpp.sd_log_callback
+def sd_log_callback(
     level: int,
     text: bytes,
     user_data: ctypes.c_void_p,
@@ -31,7 +31,7 @@ def stable_diffusion_log_callback(
 
 
 stable_diffusion_cpp.sd_set_log_callback(
-    stable_diffusion_log_callback, ctypes.c_void_p(0)
+    sd_log_callback, ctypes.c_void_p(0)
 )
 
 

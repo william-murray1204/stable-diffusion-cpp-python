@@ -5,13 +5,13 @@ import os
 import ctypes
 import functools
 import pathlib
+from enum import IntEnum
 
 from typing import (
     Any,
     Callable,
     List,
     Union,
-    NewType,
     Optional,
     TYPE_CHECKING,
     TypeVar,
@@ -159,12 +159,14 @@ ggml_abort_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p)
 # stable-diffusion.h bindings
 ################################################
 
+
 # enum rng_type_t {
 #     STD_DEFAULT_RNG,
 #     CUDA_RNG
 # };
-STD_DEFAULT_RNG = 0
-CUDA_RNG = 1
+class RNGType(IntEnum):
+    STD_DEFAULT_RNG = 0
+    CUDA_RNG = 1
 
 
 # enum sample_method_t {
@@ -178,15 +180,16 @@ CUDA_RNG = 1
 #     LCM,
 #     N_SAMPLE_METHODS
 # };
-EULER_A = 0
-EULER = 1
-HEUN = 2
-DPM2 = 3
-DPMPP2S_A = 4
-DPMPP2M = 5
-DPMPP2Mv2 = 6
-LCM = 7
-N_SAMPLE_METHODS = 8
+class SampleMethod(IntEnum):
+    EULER_A = 0
+    EULER = 1
+    HEUN = 2
+    DPM2 = 3
+    DPMPP2S_A = 4
+    DPMPP2M = 5
+    DPMPP2Mv2 = 6
+    LCM = 7
+    N_SAMPLE_METHODS = 8
 
 
 # enum schedule_t {
@@ -195,10 +198,11 @@ N_SAMPLE_METHODS = 8
 #     KARRAS,
 #     N_SCHEDULES
 # };
-DEFAULT = 0
-DISCRETE = 1
-KARRAS = 2
-N_SCHEDULES = 3
+class Schedule(IntEnum):
+    DEFAULT = 0
+    DISCRETE = 1
+    KARRAS = 2
+    N_SCHEDULES = 3
 
 
 # // same as enum ggml_type
@@ -233,33 +237,34 @@ N_SCHEDULES = 3
 #     SD_TYPE_I32,
 #     SD_TYPE_COUNT,
 # };
-SD_TYPE_F32 = 0
-SD_TYPE_F16 = 1
-SD_TYPE_Q4_0 = 2
-SD_TYPE_Q4_1 = 3
-SD_TYPE_Q5_0 = 6
-SD_TYPE_Q5_1 = 7
-SD_TYPE_Q8_0 = 8
-SD_TYPE_Q8_1 = 9
-# // k-quantizations
-SD_TYPE_Q2_K = 10
-SD_TYPE_Q3_K = 11
-SD_TYPE_Q4_K = 12
-SD_TYPE_Q5_K = 13
-SD_TYPE_Q6_K = 14
-SD_TYPE_Q8_K = 15
-SD_TYPE_IQ2_XXS = 16
-SD_TYPE_IQ2_XS = 17
-SD_TYPE_IQ3_XXS = 18
-SD_TYPE_IQ1_S = 19
-SD_TYPE_IQ4_NL = 20
-SD_TYPE_IQ3_S = 21
-SD_TYPE_IQ2_S = 22
-SD_TYPE_IQ4_XS = 23
-SD_TYPE_I8 = 24
-SD_TYPE_I16 = 25
-SD_TYPE_I32 = 26
-SD_TYPE_COUNT = 27
+class GGMLType(IntEnum):
+    SD_TYPE_F32 = 0
+    SD_TYPE_F16 = 1
+    SD_TYPE_Q4_0 = 2
+    SD_TYPE_Q4_1 = 3
+    SD_TYPE_Q5_0 = 6
+    SD_TYPE_Q5_1 = 7
+    SD_TYPE_Q8_0 = 8
+    SD_TYPE_Q8_1 = 9
+    # // k-quantizations
+    SD_TYPE_Q2_K = 10
+    SD_TYPE_Q3_K = 11
+    SD_TYPE_Q4_K = 12
+    SD_TYPE_Q5_K = 13
+    SD_TYPE_Q6_K = 14
+    SD_TYPE_Q8_K = 15
+    SD_TYPE_IQ2_XXS = 16
+    SD_TYPE_IQ2_XS = 17
+    SD_TYPE_IQ3_XXS = 18
+    SD_TYPE_IQ1_S = 19
+    SD_TYPE_IQ4_NL = 20
+    SD_TYPE_IQ3_S = 21
+    SD_TYPE_IQ2_S = 22
+    SD_TYPE_IQ4_XS = 23
+    SD_TYPE_I8 = 24
+    SD_TYPE_I16 = 25
+    SD_TYPE_I32 = 26
+    SD_TYPE_COUNT = 27
 
 
 # ==================================
@@ -286,9 +291,9 @@ sd_ctx_t_p = ctypes.c_void_p
         ctypes.c_bool,  # vae_tiling
         ctypes.c_bool,  # free_params_immediately
         ctypes.c_int,  # n_threads
-        ctypes.c_int,  # wtype
+        ctypes.c_int,  # wtype (GGMLType)
         ctypes.c_int,  # rng_type
-        ctypes.c_int,  # schedule
+        ctypes.c_int,  # s
         ctypes.c_bool,  # keep_clip_on_cpu
         ctypes.c_bool,  # keep_control_net_cpu
         ctypes.c_bool,  # keep_vae_on_cpu
@@ -307,9 +312,9 @@ def new_sd_ctx(
     vae_tiling: bool,
     free_params_immediately: bool,
     n_threads: int,
-    wtype: int,
+    wtype: int, # GGMLType
     rng_type: int,
-    schedule: int,
+    s: int,
     keep_clip_on_cpu: bool,
     keep_control_net_cpu: bool,
     keep_vae_on_cpu: bool,
@@ -486,14 +491,14 @@ upscaler_ctx_t_p = ctypes.c_void_p
     [
         ctypes.c_char_p,  # esrgan_path
         ctypes.c_int,  # n_threads
-        ctypes.c_int,  # wtype
+        ctypes.c_int,  # wtype (GGMLType)
     ],
     upscaler_ctx_t_p,
 )
 def new_upscaler_ctx(
     esrgan_path: bytes,
     n_threads: int,
-    wtype: int,
+    wtype: int, # GGMLType
     /,
 ) -> upscaler_ctx_t_p: ...
 
