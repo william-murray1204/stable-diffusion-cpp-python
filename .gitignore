@@ -5,6 +5,9 @@ __pycache__/
 
 stable-diffusion.dll
 stable-diffusion.lib
+rocblas.dll
+hipblas.dll
+amdhip64.dll
 
 # C extensions
 *.so

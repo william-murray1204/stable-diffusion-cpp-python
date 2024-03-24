@@ -1,12 +1,14 @@
-from typing import List, Literal, Any, Optional
-import os
-
-import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
-
-from ._logger import set_verbose
-
+from typing import List, Optional, Union
+import random
 import ctypes
 from PIL import Image
+
+import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
+from stable_diffusion_cpp.stable_diffusion_cpp import GGMLType
+
+
+from ._internals import _StableDiffusionModel, _UpscalerModel
+from ._logger import set_verbose
 
 
 class StableDiffusion:
@@ -14,7 +16,7 @@ class StableDiffusion:
 
     def __init__(
         self,
-        model_path: str,
+        model_path: str = "",
         vae_path: str = "",
         taesd_path: str = "",
         control_net_path: str = "",
@@ -26,16 +28,13 @@ class StableDiffusion:
         vae_tiling: bool = False,
         free_params_immediately: bool = False,
         n_threads: int = -1,
-        ggml_type: int = sd_cpp.GGMLType.SD_TYPE_COUNT,
+        wtype: str = "default",
         rng_type: int = sd_cpp.RNGType.STD_DEFAULT_RNG,
         schedule: int = sd_cpp.Schedule.DISCRETE,
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
-        # Misc
         verbose: bool = True,
-        # Extra Params
-        **kwargs,  # type: ignore
     ):
         """Load a stable-diffusion.cpp model from `model_path`.
 
@@ -47,6 +46,7 @@ class StableDiffusion:
             ...     model_path="path/to/model",
             ... )
             >>> images = stable_diffusion.txt_to_img(prompt="a lovely cat")
+            >>> images[0].save("output.png")
 
         Args:
             model_path: Path to the model.
@@ -61,7 +61,7 @@ class StableDiffusion:
             vae_tiling: Process vae in tiles to reduce memory usage.
             free_params_immediately: Free parameters immediately after use.
             n_threads: Number of threads to use for generation.
-            ggml_type: GGML type (default: sd_type_count).
+            wtype: The weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0) (default: the weight type of the model file).
             rng_type: RNG (default: cuda).
             schedule: Denoiser sigma schedule (default: discrete).
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
@@ -87,7 +87,7 @@ class StableDiffusion:
         self.vae_tiling = vae_tiling
         self.free_params_immediately = free_params_immediately
         self.n_threads = n_threads
-        self.ggml_type = ggml_type
+        self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
         self.keep_clip_on_cpu = keep_clip_on_cpu
@@ -99,51 +99,67 @@ class StableDiffusion:
         self.verbose = verbose
         set_verbose(verbose)
 
-        # =========== Model loading ===========
-        self.model = None
+        # =========== SD Model loading ===========
 
-        if not os.path.exists(model_path):
-            raise ValueError(f"Model path does not exist: {model_path}")
+        # Set the correspondoing weight type for type
+        if self.wtype == "default":
+            self.wtype = GGMLType.SD_TYPE_COUNT
+        elif self.wtype == "f32":
+            self.wtype = GGMLType.SD_TYPE_F32
+        elif self.wtype == "f16":
+            self.wtype = GGMLType.SD_TYPE_F16
+        elif self.wtype == "q4_0":
+            self.wtype = GGMLType.SD_TYPE_Q4_0
+        elif self.wtype == "q4_1":
+            self.wtype = GGMLType.SD_TYPE_Q4_1
+        elif self.wtype == "q5_0":
+            self.wtype = GGMLType.SD_TYPE_Q5_0
+        elif self.wtype == "q5_1":
+            self.wtype = GGMLType.SD_TYPE_Q5_1
+        elif self.wtype == "q8_0":
+            self.wtype = GGMLType.SD_TYPE_Q8_0
+        else:
+            raise ValueError(
+                f"error: invalid weight format {self.wtype}, must be one of [default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0]"
+            )
 
-        # Initialize the Stable Diffusion model
-        self._model = sd_cpp.new_sd_ctx(
-            self.model_path.encode("utf-8"),
-            self.vae_path.encode("utf-8"),
-            self.taesd_path.encode("utf-8"),
-            self.control_net_path.encode("utf-8"),
-            self.lora_model_dir.encode("utf-8"),
-            self.embed_dir.encode("utf-8"),
-            self.stacked_id_embed_dir.encode("utf-8"),
+        # Load the Stable Diffusion model
+        self._model = _StableDiffusionModel(
+            self.model_path,
+            self.vae_path,
+            self.taesd_path,
+            self.control_net_path,
+            self.lora_model_dir,
+            self.embed_dir,
+            self.stacked_id_embed_dir,
             self.vae_decode_only,
             self.vae_tiling,
             self.free_params_immediately,
             self.n_threads,
-            self.ggml_type,
+            self.wtype,
             self.rng_type,
             self.schedule,
             self.keep_clip_on_cpu,
             self.keep_control_net_cpu,
             self.keep_vae_on_cpu,
+            self.verbose,
         )
 
-        if self._model is None:
-            raise ValueError("Failed to initialize Stable Diffusion model")
+        # =========== Upscaling Model loading ===========
 
-        # =========== Model loading ===========
+        self._upscaler = _UpscalerModel(
+            upscaler_path, self.n_threads, self.wtype, self.verbose
+        )
 
-        self._upscaler = None
+    @property
+    def model(self) -> sd_cpp.sd_ctx_t_p:
+        assert self._model.model is not None
+        return self._model.model
 
-        # Initialize the upscaler model
-        if upscaler_path:
-            if not os.path.exists(upscaler_path):
-                raise ValueError(f"Upscaler path does not exist: {upscaler_path}")
-
-            self._upscaler = sd_cpp.new_upscaler_ctx(
-                upscaler_path.encode("utf-8"), self.n_threads, self.ggml_type
-            )
-
-            if self._upscaler is None:
-                raise ValueError("Failed to initialize upscaler model")
+    @property
+    def upscaler(self) -> sd_cpp.upscaler_ctx_t_p:
+        assert self._upscaler.upscaler is not None
+        return self._upscaler.upscaler
 
     # ============================================
     # Text to Image
@@ -157,20 +173,56 @@ class StableDiffusion:
         cfg_scale: float = 7.0,
         width: int = 512,
         height: int = 512,
-        sample_method: int = 0,
+        sample_method: int = sd_cpp.SampleMethod.EULER_A,
         sample_steps: int = 20,
         seed: int = 42,
         batch_count: int = 1,
-        control_cond=None,
+        control_cond: Optional[Union[Image.Image, str]] = None,
         control_strength: float = 0.9,
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        upscale_factor: int = 1,
     ) -> List[Image.Image]:
+        """Generate images from a text prompt.
+
+        Args:
+            prompt: The prompt to render.
+            negative_prompt: The negative prompt.
+            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer (default: -1).
+            cfg_scale: Unconditional guidance scale: (default: 7.0).
+            width: Image height, in pixel space (default: 512).
+            height: Image width, in pixel space (default: 512).
+            sample_method: Sampling method (default: "euler_a").
+            sample_steps: Number of sample steps (default: 20).
+            seed: RNG seed (default: 42, use random seed for < 0).
+            batch_count: Number of images to generate.
+            control_cond: A control condition image path or Pillow Image. (default: None).
+            control_strength: Strength to apply Control Net (default: 0.9).
+            style_strength: Strength for keeping input identity (default: 20%).
+            normalize_input: Normalize PHOTOMAKER input id images.
+            input_id_images_path: Path to PHOTOMAKER input id images dir.
+            upscale_factor: The image upscaling factor (default: 1).
+
+        Returns:
+            A list of Pillow Images."""
+
+        if self.model is None:
+            raise Exception(
+                "Stable diffusion model not loaded. Make sure you have set the `model_path`."
+            )
+
+        # Set a random seed if seed is negative
+        if seed < 0:
+            seed = random.randint(0, 10000)
+
+        # Convert the control condition to a C sd_image_t
+        if control_cond is not None:
+            control_cond = self._image_to_sd_image_t_p(control_cond)
 
         # Run the txt2img to generate images
         c_images = sd_cpp.txt2img(
-            self._model,
+            self.model,
             prompt.encode("utf-8"),
             negative_prompt.encode("utf-8"),
             clip_skip,
@@ -189,7 +241,7 @@ class StableDiffusion:
         )
 
         # Convert the C array of images to a Python list of images
-        return self._convert_to_images(c_images)
+        return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
     # ============================================
     # Image to Image
@@ -197,29 +249,57 @@ class StableDiffusion:
 
     def img_to_img(
         self,
-        image: Image.Image,
-        prompt: bytes,
-        negative_prompt: bytes,
-        clip_skip: int,
-        cfg_scale: float,
-        width: int,
-        height: int,
-        sample_method: int,
-        sample_steps: int,
-        strength: float,
-        seed: int,
-        batch_count: int,
+        image: Union[Image.Image, str],
+        prompt: str,
+        negative_prompt: str = "",
+        clip_skip: int = -1,
+        cfg_scale: float = 7.0,
+        width: int = 512,
+        height: int = 512,
+        sample_method: int = sd_cpp.SampleMethod.EULER_A,
+        sample_steps: int = 20,
+        strength: float = 0.75,
+        seed: int = 42,
+        batch_count: int = 1,
+        upscale_factor: int = 1,
     ) -> List[Image.Image]:
-        """Generate images from an input image."""
+        """Generate images from an image input and text prompt.
+
+        Args:
+            image: The input image path or Pillow Image to direct the generation.
+            prompt: The prompt to render.
+            negative_prompt: The negative prompt.
+            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer (default: -1).
+            cfg_scale: Unconditional guidance scale: (default: 7.0).
+            width: Image height, in pixel space (default: 512).
+            height: Image width, in pixel space (default: 512).
+            sample_method: Sampling method (default: "euler_a").
+            sample_steps: Number of sample steps (default: 20).
+            strength: Strength for noising/unnoising (default: 0.75).
+            seed: RNG seed (default: 42, use random seed for < 0).
+            batch_count: Number of images to generate.
+            upscale_factor: The image upscaling factor (default: 1).
+
+        Returns:
+            A list of Pillow Images."""
+
+        if self.model is None:
+            raise Exception(
+                "Stable diffusion model not loaded. Make sure you have set the `model_path`"
+            )
+
+        # Set a random seed if seed is negative
+        if seed < 0:
+            seed = random.randint(0, 10000)
 
         # Convert the image to a byte array
-        image_bytes = self._image_to_bytes(image)
+        image_pointer = self._image_to_sd_image_t_p(image)
 
         c_images = sd_cpp.img2img(
-            self._model,
-            image_bytes,
-            prompt,
-            negative_prompt,
+            self.model,
+            image_pointer,
+            prompt.encode("utf-8"),
+            negative_prompt.encode("utf-8"),
             clip_skip,
             cfg_scale,
             width,
@@ -230,7 +310,7 @@ class StableDiffusion:
             seed,
             batch_count,
         )
-        return self._convert_to_images(c_images)
+        return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
     # ============================================
     # Image to Video
@@ -238,26 +318,54 @@ class StableDiffusion:
 
     def img_to_vid(
         self,
-        image: Image.Image,
-        width: int,
-        height: int,
-        video_frames: int,
-        motion_bucket_id: int,
-        fps: int,
-        augmentation_level: float,
-        min_cfg: float,
-        cfg_scale: float,
-        sample_method: int,
-        sample_steps: int,
-        strength: float,
-        seed: int,
+        image: Union[Image.Image, str],
+        width: int = 512,
+        height: int = 512,
+        video_frames: int = 6,
+        motion_bucket_id: int = 127,
+        fps: int = 6,
+        augmentation_level: float = 0.0,
+        min_cfg: float = 1.0,
+        cfg_scale: float = 7.0,
+        sample_method: int = sd_cpp.SampleMethod.EULER_A,
+        sample_steps: int = 20,
+        strength: float = 0.75,
+        seed: int = 42,
     ) -> List[Image.Image]:
-        """Generate a video from an input image."""
-        image_bytes = self._image_to_bytes(image)
+        """Generate a video from an image input.
+
+        Args:
+            image: The input image path or Pillow Image to direct the generation.
+            width: Video height, in pixel space (default: 512).
+            height: Video width, in pixel space (default: 512).
+            video_frames: Number of frames in the video.
+            motion_bucket_id: Motion bucket id.
+            fps: Frames per second.
+            augmentation_level: The augmentation level.
+            min_cfg: The minimum cfg.
+            cfg_scale: Unconditional guidance scale: (default: 7.0).
+            sample_method: Sampling method (default: "euler_a").
+            sample_steps: Number of sample steps (default: 20).
+            strength: Strength for noising/unnoising (default: 0.75).
+            seed: RNG seed (default: 42, use random seed for < 0).
+
+        Returns:
+            A list of Pillow Images."""
+
+        if self.model is None:
+            raise Exception(
+                "Stable diffusion model not loaded. Make sure you have set the `model_path`"
+            )
+
+        # Set a random seed if seed is negative
+        if seed < 0:
+            seed = random.randint(0, 10000)
+
+        image_pointer = self._image_to_sd_image_t_p(image)
 
         c_video = sd_cpp.img2vid(
-            self._model,
-            image_bytes,
+            self.model,
+            image_pointer,
             width,
             height,
             video_frames,
@@ -271,8 +379,9 @@ class StableDiffusion:
             strength,
             seed,
         )
-        # TODO - Convert to video
-        return
+
+        # return self._sd_image_t_p_to_images(c_video, video_frames, 1)
+        raise NotImplementedError("Not yet implemented.")
 
     # ============================================
     # Image Upscaling
@@ -280,39 +389,141 @@ class StableDiffusion:
 
     def upscale(
         self,
-        images: List[Image.Image],
+        images: Union[List[Union[Image.Image, str]], Union[Image.Image, str]],
         upscale_factor: int = 4,
     ) -> List[Image.Image]:
-        """Upscale a list of images using the upscaler model."""
+        """Upscale a list of images using the upscaler model.
 
-        c_images = []
+        Args:
+            images: A list of image paths or Pillow Images to upscale.
+            upscale_factor: The image upscaling factor (default: 4).
 
-        for image in images:
-            # Convert the image to a byte array
-            image_bytes = self._image_to_bytes(image)
+        Returns:
+            A list of Pillow Images."""
 
-            # Upscale the image
-            c_images.append(
-                sd_cpp.upscale(
-                    self._upscaler,
-                    image_bytes,
-                    upscale_factor,
-                )
+        if self.upscaler is None:
+            raise Exception(
+                "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
             )
 
-        return self._convert_to_images(c_images)
+        if not isinstance(images, list):
+            images = [images]  # Wrap single image in a list
+
+        upscaled_images = []
+
+        for image in images:
+
+            # Convert the image to a byte array
+            image_bytes = self._image_to_sd_image_t_p(image)
+
+            # Upscale the image
+            img = sd_cpp.upscale(
+                self.upscaler,
+                image_bytes,
+                upscale_factor,
+            )
+
+            # Load the image from the C sd_image_t and convert it to a PIL Image
+            img = self._dereference_sd_image_t_p(img)
+            img = self._bytes_to_image(img["data"], img["width"], img["height"])
+            upscaled_images.append(img)
+
+        return upscaled_images
 
     # ============================================
     # Utility functions
     # ============================================
 
-    def _image_to_bytes(self, img: Image.Image):
-        """Convert a PIL Image to a byte array."""
-        return img.tobytes()
+    # ============= Image to C sd_image_t =============
 
-    def _convert_to_images(self, c_images):
+    def _image_to_sd_image_t_p(self, img: Union[Image.Image, str], channel: int = 3):
+        """Convert a PIL Image or image path to a C sd_image_t."""
+
+        # Convert image path to image if str
+        if isinstance(img, str):
+            img = Image.open(img)
+
+        # Convert any non RGBA to RGBA
+        if img.format != "PNG":
+            img = img.convert("RGBA")
+
+        # Convert the PIL Image to a byte array
+        img_bytes = img.tobytes()
+
+        # Create a new C sd_image_t
+        c_image = sd_cpp.sd_image_t(
+            width=img.width,
+            height=img.height,
+            channel=channel,
+            data=ctypes.cast(
+                (ctypes.c_byte * len(img_bytes))(*img_bytes),
+                ctypes.POINTER(ctypes.c_uint8),
+            ),
+        )
+        return c_image
+
+    # ============= C sd_image_t to Image =============
+
+    def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t):
+        """Dereference a C sd_image_t pointer to a Python dictionary with height, width, channel and data (bytes)."""
+
+        def _c_array_to_bytes(c_array, buffer_size: int):
+            return bytearray(
+                ctypes.cast(
+                    c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)
+                ).contents
+            )
+
+        # Calculate the size of the data buffer
+        buffer_size = c_image.channel * c_image.width * c_image.height
+
+        img = {
+            "width": c_image.width,
+            "height": c_image.height,
+            "channel": c_image.channel,
+            "data": _c_array_to_bytes(c_image.data, buffer_size),
+        }
+        return img
+
+    def _image_slice(
+        self, c_images: sd_cpp.sd_image_t_p, count: int, upscale_factor: int
+    ):
+        """Slice a C array of images."""
+        img_array = ctypes.cast(
+            c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)
+        ).contents
+
+        images = []
+
+        for i in range(count):
+            c_img = img_array[i]
+
+            # Upscale the image
+            if upscale_factor > 1:
+                if self.upscaler is None:
+                    raise Exception(
+                        "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
+                    )
+
+                c_img = sd_cpp.upscale(
+                    self.upscaler,
+                    c_img,
+                    upscale_factor,
+                )
+
+            img = self._dereference_sd_image_t_p(c_img)
+            images.append(img)
+
+        # Return the list of images
+        return images
+
+    def _sd_image_t_p_to_images(
+        self, c_images: sd_cpp.sd_image_t_p, count: int, upscale_factor: int
+    ):
+        """Convert C sd_image_t_p images to a Python list of images."""
+
         # Convert C array to Python list of images
-        images = self._image_slice(c_images, 1)
+        images = self._image_slice(c_images, count, upscale_factor)
 
         # Convert each image to PIL Image
         for i in range(len(images)):
@@ -321,37 +532,7 @@ class StableDiffusion:
 
         return images
 
-    def _image_slice(self, c_images: sd_cpp.sd_image_t_p, count: int):
-        """Convert a C array of images to a Python list of images."""
-
-        def _c_array_to_bytes(self, c_array, buffer_size: int):
-            return bytearray(
-                ctypes.cast(
-                    c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)
-                ).contents
-            )
-
-        img_array = ctypes.cast(
-            c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)
-        ).contents
-
-        images = []
-        for i in range(count):
-            c_img = img_array[i]
-
-            # Calculate the size of the data buffer
-            buffer_size = c_img.channel * c_img.width * c_img.height
-
-            img = {
-                "width": c_img.width,
-                "height": c_img.height,
-                "channel": c_img.channel,
-                "data": _c_array_to_bytes(c_img.data, buffer_size),
-            }
-            images.append(img)
-
-        # Return the list of images
-        return images
+    # ============= Bytes to Image =============
 
     def _bytes_to_image(self, byte_data: bytes, width: int, height: int):
         """Convert a byte array to a PIL Image."""
@@ -364,5 +545,4 @@ class StableDiffusion:
                     (x, y),
                     (byte_data[idx], byte_data[idx + 1], byte_data[idx + 2], 255),
                 )
-
         return img

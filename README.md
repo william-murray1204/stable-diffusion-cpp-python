@@ -99,7 +99,7 @@ This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure 
 Windows Users Refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide.
 
 ```bash
-CMAKE_ARGS="-G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=gfx1100" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=gfx1101" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -140,10 +140,30 @@ Below is a short example demonstrating how to use the high-level API to generate
 >>> from stable_diffusion_cpp import StableDiffusion
 >>> stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
+      wtype="default", # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
       # seed=1337, # Uncomment to set a specific seed
 )
 >>> output = stable_diffusion.txt_to_img(
       "a lovely cat", # Prompt
+)
+```
+
+#### with LoRA
+
+- You can specify the directory where the lora weights are stored via `lora_model_dir`. If not specified, the default is the current working directory.
+
+- LoRA is specified via prompt, just like [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#lora).
+
+Here's a simple example:
+
+```python
+>>> from stable_diffusion_cpp import StableDiffusion
+>>> stable_diffusion = StableDiffusion(
+      model_path="../models/v1-5-pruned-emaonly.safetensors",
+      lora_model_dir="../models/",
+)
+>>> output = stable_diffusion.txt_to_img(
+      "a lovely cat<lora:marblesh:1>", # Prompt
 )
 ```
 
@@ -156,8 +176,29 @@ Below is a short example demonstrating how to use the low-level API:
 
 ```python
 >>> import stable_diffusion_cpp as sd_cpp
->>> sd_ctx = sd_cpp.new_sd_ctx(<PARAMS>)
->>> sd_cpp.free_sd_ctx(sd_ctx)
+>>> import ctypes
+>>> from PIL import Image
+
+>>> img = Image.open("path/to/image.png")
+>>> img_bytes = img.tobytes()
+
+>>> c_image = sd_cpp.sd_image_t(
+      width=img.width,
+      height=img.height,
+      channel=channel,
+      data=ctypes.cast(
+            (ctypes.c_byte * len(img_bytes))(*img_bytes),
+            ctypes.POINTER(ctypes.c_uint8),
+      ),
+) # Create a new C sd_image_t
+
+>>> img = sd_cpp.upscale(
+      self.upscaler,
+      image_bytes,
+      upscale_factor,
+) # Upscale the image
+
+>>> sd_cpp.free_image(c_image)
 ```
 
 ## Development
@@ -180,17 +221,14 @@ make clean
 
 ## To Do
 
-- [ ] test get num cores and other info low level api funcs
-- [ ] Check seed and n_gpu_layers and thread can be -1 and work properly
-- [ ] get img2img working
-- [ ] get img2vid working
-- [ ] Add proper error handling
-- [ ] deploy to PyPI and test installation (CI/CD pipeline github actions)
-- [ ] get GPU acceleration
+- [ ] Add high-level API for conversion of model types
+- [ ] get preprocess_canny working
+- [ ] test clip
+
+- [ ] Add options for these torch.FloatTensor, PIL.Image.Image, np.ndarray, List[torch.FloatTensor], List[PIL.Image.Image], or List[np.ndarray]
+- [ ] Get img2vid working
 - [ ] Get tests working
-- [ ] Add examples to exampels folder
-- [ ] Properly intergaret callback for progress
-- [ ] get Loras working
+- [ ] Properly intergrate callback for progress
 
 ## References
 

@@ -312,7 +312,7 @@ def new_sd_ctx(
     vae_tiling: bool,
     free_params_immediately: bool,
     n_threads: int,
-    wtype: int, # GGMLType
+    wtype: int,  # GGMLType
     rng_type: int,
     s: int,
     keep_clip_on_cpu: bool,
@@ -386,7 +386,7 @@ def txt2img(
     sample_steps: int,
     seed: int,
     batch_count: int,
-    control_cond,
+    control_cond: sd_image_t,
     control_strength: float,
     style_strength: float,
     normalize_input: bool,
@@ -498,7 +498,7 @@ upscaler_ctx_t_p = ctypes.c_void_p
 def new_upscaler_ctx(
     esrgan_path: bytes,
     n_threads: int,
-    wtype: int, # GGMLType
+    wtype: int,  # GGMLType
     /,
 ) -> upscaler_ctx_t_p: ...
 
@@ -603,9 +603,11 @@ def preprocess_canny(
 @ctypes_function(
     "get_num_physical_cores",
     [],
-    ctypes.c_char_p,
+    ctypes.c_int32,
 )
-def get_num_physical_cores() -> bytes: ...
+def get_num_physical_cores() -> int:
+    """Get the number of physical cores"""
+    ...
 
 
 @ctypes_function(
@@ -613,7 +615,9 @@ def get_num_physical_cores() -> bytes: ...
     [],
     ctypes.c_char_p,
 )
-def sd_get_system_info() -> bytes: ...
+def sd_get_system_info() -> bytes:
+    """Get the Stable diffusion system information"""
+    ...
 
 
 # ==================================
@@ -634,7 +638,9 @@ def sd_set_progress_callback(
     callback: Optional[CtypesFuncPointer],
     data: ctypes.c_void_p,
     /,
-): ...
+):
+    """Set callback for diffusion progression events."""
+    ...
 
 
 # ==================================
