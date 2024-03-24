@@ -35,6 +35,7 @@ All `stable-diffusion.cpp` cmake build options can be set via the `CMAKE_ARGS` e
 <details open>
 <summary>Environment Variables</summary>
 
+
 ```bash
 # Linux and Mac
 CMAKE_ARGS="-DGGML_OPENBLAS=ON" \
