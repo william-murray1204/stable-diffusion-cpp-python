@@ -56,13 +56,12 @@ class _StableDiffusionModel:
         self.verbose = verbose
 
         self.model = None
+        
+        # Load the free_sd_ctx function
+        self._free_sd_ctx = sd_cpp._lib.free_sd_ctx
 
         # Load the model from the file if the path is provided
         if model_path:
-
-            # Load the free_sd_ctx function
-            self._free_sd_ctx = sd_cpp.free_sd_ctx
-
             if not os.path.exists(model_path):
                 raise ValueError(f"Model path does not exist: {model_path}")
 
@@ -126,7 +125,7 @@ class _UpscalerModel:
         if upscaler_path:
 
             # Load the free_upscaler_ctx function
-            self._free_upscaler_ctx = sd_cpp.free_upscaler_ctx
+            self._free_upscaler_ctx = sd_cpp._lib.free_upscaler_ctx
 
             if not os.path.exists(upscaler_path):
                 raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")

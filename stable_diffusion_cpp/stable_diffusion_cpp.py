@@ -12,6 +12,7 @@ from typing import (
     Callable,
     List,
     Union,
+    NewType,
     Optional,
     TYPE_CHECKING,
     TypeVar,
@@ -274,7 +275,8 @@ class GGMLType(IntEnum):
 # ------------ new_sd_ctx ------------
 
 # struct sd_context;
-sd_ctx_t_p = ctypes.c_void_p
+sd_ctx_t_p = NewType("sd_ctx_t_p", int)
+sd_ctx_t_p_ctypes = ctypes.c_void_p
 
 
 @ctypes_function(
@@ -298,7 +300,7 @@ sd_ctx_t_p = ctypes.c_void_p
         ctypes.c_bool,  # keep_control_net_cpu
         ctypes.c_bool,  # keep_vae_on_cpu
     ],
-    sd_ctx_t_p,
+    sd_ctx_t_p_ctypes,
 )
 def new_sd_ctx(
     model_path: bytes,
@@ -327,13 +329,16 @@ def new_sd_ctx(
 
 @ctypes_function(
     "free_sd_ctx",
-    [sd_ctx_t_p],  # sd_ctx
+    [sd_ctx_t_p_ctypes],  # sd_ctx
     None,
 )
 def free_sd_ctx(
     sd_ctx: sd_ctx_t_p,
     /,
-) -> None: ...
+): ...
+
+
+# ------------ sd_image_t ------------
 
 
 class sd_image_t(ctypes.Structure):
@@ -355,7 +360,7 @@ sd_image_t_p = ctypes.POINTER(sd_image_t)
 @ctypes_function(
     "txt2img",
     [
-        sd_ctx_t_p,  # sd_ctx
+        sd_ctx_t_p_ctypes,  # sd_ctx
         ctypes.c_char_p,  # prompt
         ctypes.c_char_p,  # negative_prompt
         ctypes.c_int,  # clip_skip
@@ -366,7 +371,7 @@ sd_image_t_p = ctypes.POINTER(sd_image_t)
         ctypes.c_int,  # sample_steps
         ctypes.c_int64,  # seed
         ctypes.c_int,  # batch_count
-        sd_image_t_p,  # control_cond
+        sd_ctx_t_p_ctypes,  # control_cond
         ctypes.c_float,  # control_strength
         ctypes.c_float,  # style_strength
         ctypes.c_bool,  # normalize_input
@@ -402,7 +407,7 @@ def txt2img(
 @ctypes_function(
     "img2img",
     [
-        sd_ctx_t_p,  # sd_ctx
+        sd_ctx_t_p_ctypes,  # sd_ctx
         sd_image_t,  # init_image
         ctypes.c_char_p,  # prompt
         ctypes.c_char_p,  # negative_prompt
@@ -443,7 +448,7 @@ def img2img(
 @ctypes_function(
     "img2vid",
     [
-        sd_ctx_t_p,  # sd_ctx
+        sd_ctx_t_p_ctypes,  # sd_ctx
         sd_image_t,  # init_image
         ctypes.c_int,  # width
         ctypes.c_int,  # height
@@ -481,8 +486,9 @@ def img2vid(
 
 # ------------ new_upscaler_ctx ------------
 
+upscaler_ctx_t_p = NewType("upscaler_ctx_t_p", int)
+upscaler_ctx_t_p_ctypes = ctypes.c_void_p
 
-upscaler_ctx_t_p = ctypes.c_void_p
 
 
 # SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads, enum sd_type_t wtype);
@@ -493,7 +499,7 @@ upscaler_ctx_t_p = ctypes.c_void_p
         ctypes.c_int,  # n_threads
         ctypes.c_int,  # wtype (GGMLType)
     ],
-    upscaler_ctx_t_p,
+    upscaler_ctx_t_p_ctypes,
 )
 def new_upscaler_ctx(
     esrgan_path: bytes,
@@ -510,7 +516,7 @@ def new_upscaler_ctx(
 @ctypes_function(
     "free_upscaler_ctx",
     [
-        upscaler_ctx_t_p,  # upscaler_ctx
+        upscaler_ctx_t_p_ctypes,  # upscaler_ctx
     ],
     None,
 )
@@ -527,7 +533,7 @@ def free_upscaler_ctx(
 @ctypes_function(
     "upscale",
     [
-        upscaler_ctx_t_p,  # upscaler_ctx
+        upscaler_ctx_t_p_ctypes,  # upscaler_ctx
         sd_image_t,  # input_image
         ctypes.c_uint32,  # upscale_factor
     ],

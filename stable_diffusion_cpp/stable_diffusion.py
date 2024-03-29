@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 import random
 import ctypes
+import multiprocessing
 from PIL import Image
 
 import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
@@ -86,7 +87,7 @@ class StableDiffusion:
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
         self.free_params_immediately = free_params_immediately
-        self.n_threads = n_threads
+        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1)
         self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
