@@ -1,8 +1,9 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Callable
 import random
 import ctypes
 import multiprocessing
 from PIL import Image
+
 
 import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 from stable_diffusion_cpp.stable_diffusion_cpp import GGMLType
@@ -184,6 +185,7 @@ class StableDiffusion:
         normalize_input: bool = False,
         input_id_images_path: str = "",
         upscale_factor: int = 1,
+        progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
         """Generate images from a text prompt.
 
@@ -204,6 +206,7 @@ class StableDiffusion:
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
             upscale_factor: The image upscaling factor (default: 1).
+            progress_callback: Callback function to call on each step end.
 
         Returns:
             A list of Pillow Images."""
@@ -217,7 +220,23 @@ class StableDiffusion:
         if seed < 0:
             seed = random.randint(0, 10000)
 
-        # Convert the control condition to a C sd_image_t
+        # ==================== Set the callback function ====================
+
+        if progress_callback is not None:
+
+            @sd_cpp.sd_progress_callback
+            def sd_progress_callback(
+                step: int,
+                steps: int,
+                time: float,
+                data: ctypes.c_void_p,
+            ):
+                progress_callback(step, steps, time)
+
+            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
+        # ==================== Convert the control condition to a C sd_image_t ====================
+
         if control_cond is not None:
             control_cond = self._image_to_sd_image_t_p(control_cond)
 
@@ -263,6 +282,7 @@ class StableDiffusion:
         seed: int = 42,
         batch_count: int = 1,
         upscale_factor: int = 1,
+        progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
         """Generate images from an image input and text prompt.
 
@@ -280,6 +300,7 @@ class StableDiffusion:
             seed: RNG seed (default: 42, use random seed for < 0).
             batch_count: Number of images to generate.
             upscale_factor: The image upscaling factor (default: 1).
+            progress_callback: Callback function to call on each step end.
 
         Returns:
             A list of Pillow Images."""
@@ -293,7 +314,23 @@ class StableDiffusion:
         if seed < 0:
             seed = random.randint(0, 10000)
 
-        # Convert the image to a byte array
+        # ==================== Set the callback function ====================
+
+        if progress_callback is not None:
+
+            @sd_cpp.sd_progress_callback
+            def sd_progress_callback(
+                step: int,
+                steps: int,
+                time: float,
+                data: ctypes.c_void_p,
+            ):
+                progress_callback(step, steps, time)
+
+            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
+        # ==================== Convert the image to a byte array ====================
+
         image_pointer = self._image_to_sd_image_t_p(image)
 
         c_images = sd_cpp.img2img(
@@ -332,6 +369,7 @@ class StableDiffusion:
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
+        progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
         """Generate a video from an image input.
 
@@ -349,6 +387,7 @@ class StableDiffusion:
             sample_steps: Number of sample steps (default: 20).
             strength: Strength for noising/unnoising (default: 0.75).
             seed: RNG seed (default: 42, use random seed for < 0).
+            progress_callback: Callback function to call on each step end.
 
         Returns:
             A list of Pillow Images."""
@@ -361,6 +400,23 @@ class StableDiffusion:
         # Set a random seed if seed is negative
         if seed < 0:
             seed = random.randint(0, 10000)
+
+        # ==================== Set the callback function ====================
+
+        if progress_callback is not None:
+
+            @sd_cpp.sd_progress_callback
+            def sd_progress_callback(
+                step: int,
+                steps: int,
+                time: float,
+                data: ctypes.c_void_p,
+            ):
+                progress_callback(step, steps, time)
+
+            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
+        # ==================== Convert the image to a byte array ====================
 
         image_pointer = self._image_to_sd_image_t_p(image)
 
@@ -392,6 +448,7 @@ class StableDiffusion:
         self,
         images: Union[List[Union[Image.Image, str]], Union[Image.Image, str]],
         upscale_factor: int = 4,
+        progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
         """Upscale a list of images using the upscaler model.
 
@@ -407,8 +464,25 @@ class StableDiffusion:
                 "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
             )
 
+        # ==================== Set the callback function ====================
+
+        if progress_callback is not None:
+
+            @sd_cpp.sd_progress_callback
+            def sd_progress_callback(
+                step: int,
+                steps: int,
+                time: float,
+                data: ctypes.c_void_p,
+            ):
+                progress_callback(step, steps, time)
+
+            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
         if not isinstance(images, list):
             images = [images]  # Wrap single image in a list
+
+        # ==================== Upscale images ====================
 
         upscaled_images = []
 
@@ -505,12 +579,12 @@ class StableDiffusion:
                     raise Exception(
                         "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
                     )
-
-                c_img = sd_cpp.upscale(
-                    self.upscaler,
-                    c_img,
-                    upscale_factor,
-                )
+                else:
+                    c_img = sd_cpp.upscale(
+                        self.upscaler,
+                        c_img,
+                        upscale_factor,
+                    )
 
             img = self._dereference_sd_image_t_p(c_img)
             images.append(img)

@@ -490,7 +490,6 @@ upscaler_ctx_t_p = NewType("upscaler_ctx_t_p", int)
 upscaler_ctx_t_p_ctypes = ctypes.c_void_p
 
 
-
 # SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads, enum sd_type_t wtype);
 @ctypes_function(
     "new_upscaler_ctx",
@@ -631,7 +630,7 @@ def sd_get_system_info() -> bytes:
 # ==================================
 
 sd_progress_callback = ctypes.CFUNCTYPE(
-    ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p
+    None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p
 )
 
 

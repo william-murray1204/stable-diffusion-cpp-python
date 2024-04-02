@@ -5,7 +5,7 @@ import logging
 import stable_diffusion_cpp
 
 # enum sd_log_level_t {
-#     SD_LOG_DEBUG = 0, 
+#     SD_LOG_DEBUG = 0,
 #     SD_LOG_INFO = 1,
 #     SD_LOG_WARN = 2,
 #     SD_LOG_ERROR = 3
@@ -24,15 +24,13 @@ logger = logging.getLogger("stable-diffusion-cpp-python")
 def sd_log_callback(
     level: int,
     text: bytes,
-    user_data: ctypes.c_void_p,
+    data: ctypes.c_void_p,
 ):
     if logger.level <= SD_LOG_LEVEL_TO_LOGGING_LEVEL[level]:
         print(text.decode("utf-8"), end="", flush=True, file=sys.stderr)
 
 
-stable_diffusion_cpp.sd_set_log_callback(
-    sd_log_callback, ctypes.c_void_p(0)
-)
+stable_diffusion_cpp.sd_set_log_callback(sd_log_callback, ctypes.c_void_p(0))
 
 
 def set_verbose(verbose: bool):
