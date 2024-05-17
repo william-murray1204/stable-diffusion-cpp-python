@@ -35,7 +35,6 @@ All `stable-diffusion.cpp` cmake build options can be set via the `CMAKE_ARGS` e
 <details open>
 <summary>Environment Variables</summary>
 
-
 ```bash
 # Linux and Mac
 CMAKE_ARGS="-DGGML_OPENBLAS=ON" \
@@ -215,8 +214,15 @@ pip install --upgrade pip
 
 # Install with pip
 pip install -e .
+```
 
-# to clear the local build cache
+Now you can make changes to the code within the `stable_diffusion_cpp` directory and test them in your python environment.
+
+### Cleanup
+
+To clear the cache.
+
+```bash
 make clean
 ```
 
@@ -225,16 +231,12 @@ make clean
 - [ ] Add high-level API for conversion of model types
 - [ ] get preprocess_canny working
 - [ ] test clip
-
 - [ ] Add options for these torch.FloatTensor, PIL.Image.Image, np.ndarray, List[torch.FloatTensor], List[PIL.Image.Image], or List[np.ndarray]
-- [ ] Get img2vid working
-- [ ] Get tests working
-- [ ] Properly intergrate callback for progress
 
 ## References
 
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
-- [stable-diffusion-cpp-python](https://github.com/abetlen/stable-diffusion-cpp-python)
+- [llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
 - [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - [whisper-cpp-python](https://github.com/carloscdias/whisper-cpp-python)
 - [Golang stable-diffusion](https://github.com/seasonjs/stable-diffusion)
