@@ -11,9 +11,15 @@ def callback(step: int, steps: int, time: float):
     print("Completed step: {} of {}".format(step, steps))
 
 
-images = stable_diffusion.upscale(
-    images=input_images, upscale_factor=2, progress_callback=callback
-)
+try:
+    # Upscale images
+    images = stable_diffusion.upscale(
+        images=input_images, upscale_factor=2, progress_callback=callback
+    )
 
-for i, image in enumerate(images):
-    image.save(f"output_upscale_{i}.png")
+    # Save images
+    for i, image in enumerate(images):
+        image.save(f"output_upscale_{i}.png")
+
+except Exception as e:
+    print("Test - upscale failed: ", e)

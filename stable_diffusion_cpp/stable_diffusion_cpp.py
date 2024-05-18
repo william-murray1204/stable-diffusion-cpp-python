@@ -203,7 +203,8 @@ class Schedule(IntEnum):
     DEFAULT = 0
     DISCRETE = 1
     KARRAS = 2
-    N_SCHEDULES = 3
+    AYS = 3
+    N_SCHEDULES = 4
 
 
 # // same as enum ggml_type
@@ -243,6 +244,8 @@ class GGMLType(IntEnum):
     SD_TYPE_F16 = 1
     SD_TYPE_Q4_0 = 2
     SD_TYPE_Q4_1 = 3
+    # // SD_TYPE_Q4_2 = 4, support has been removed
+    # // SD_TYPE_Q4_3 (5) support has been removed
     SD_TYPE_Q5_0 = 6
     SD_TYPE_Q5_1 = 7
     SD_TYPE_Q8_0 = 8

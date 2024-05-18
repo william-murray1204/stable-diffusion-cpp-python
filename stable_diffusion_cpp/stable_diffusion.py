@@ -304,6 +304,11 @@ class StableDiffusion:
             strength: Strength for noising/unnoising (default: 0.75).
             seed: RNG seed (default: 42, use random seed for < 0).
             batch_count: Number of images to generate.
+            control_cond: A control condition image path or Pillow Image. (default: None).
+            control_strength: Strength to apply Control Net (default: 0.9).
+            style_strength: Strength for keeping input identity (default: 20%).
+            normalize_input: Normalize PHOTOMAKER input id images.
+            input_id_images_path: Path to PHOTOMAKER input id images dir.
             upscale_factor: The image upscaling factor (default: 1).
             progress_callback: Callback function to call on each step end.
 

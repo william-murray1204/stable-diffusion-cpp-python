@@ -56,7 +56,7 @@ class _StableDiffusionModel:
         self.verbose = verbose
 
         self.model = None
-        
+
         # Load the free_sd_ctx function
         self._free_sd_ctx = sd_cpp._lib.free_sd_ctx
 

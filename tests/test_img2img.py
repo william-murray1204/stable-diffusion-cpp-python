@@ -14,7 +14,10 @@ def callback(step: int, steps: int, time: float):
 try:
     # Generate images
     images = stable_diffusion.img_to_img(
-        prompt="blue eyes", image=INPUT_IMAGE_PATH, progress_callback=callback
+        prompt="blue eyes",
+        image=INPUT_IMAGE_PATH,
+        strength=0.4,
+        progress_callback=callback,
     )
     # Save images
     for i, image in enumerate(images):
