@@ -420,6 +420,11 @@ def txt2img(
         ctypes.c_float,  # strength
         ctypes.c_int64,  # seed
         ctypes.c_int,  # batch_count
+        sd_image_t_p,  # control_cond
+        ctypes.c_float,  # control_strength
+        ctypes.c_float,  # style_strength
+        ctypes.c_bool,  # normalize_input
+        ctypes.c_char_p,  # input_id_images_path
     ],
     sd_image_t_p,
 )
@@ -437,6 +442,11 @@ def img2img(
     strength: float,
     seed: int,
     batch_count: int,
+    control_cond: sd_image_t,
+    control_strength: float,
+    style_strength: float,
+    normalize_input: bool,
+    input_id_images_path: bytes,
     /,
 ) -> CtypesArray[sd_image_t]: ...
 

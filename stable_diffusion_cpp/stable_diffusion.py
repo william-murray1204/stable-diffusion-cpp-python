@@ -281,6 +281,11 @@ class StableDiffusion:
         strength: float = 0.75,
         seed: int = 42,
         batch_count: int = 1,
+        control_cond: Optional[Union[Image.Image, str]] = None,
+        control_strength: float = 0.9,
+        style_strength: float = 20.0,
+        normalize_input: bool = False,
+        input_id_images_path: str = "",
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
@@ -347,6 +352,11 @@ class StableDiffusion:
             strength,
             seed,
             batch_count,
+            control_cond,
+            control_strength,
+            style_strength,
+            normalize_input,
+            input_id_images_path.encode("utf-8"),
         )
         return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
