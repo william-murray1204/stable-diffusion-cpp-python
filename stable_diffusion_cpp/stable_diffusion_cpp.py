@@ -374,7 +374,7 @@ sd_image_t_p = ctypes.POINTER(sd_image_t)
         ctypes.c_int,  # sample_steps
         ctypes.c_int64,  # seed
         ctypes.c_int,  # batch_count
-        sd_ctx_t_p_ctypes,  # control_cond
+        sd_image_t_p,  # control_cond
         ctypes.c_float,  # control_strength
         ctypes.c_float,  # style_strength
         ctypes.c_bool,  # normalize_input

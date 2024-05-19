@@ -184,6 +184,7 @@ class StableDiffusion:
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
@@ -205,6 +206,7 @@ class StableDiffusion:
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
+            canny: Apply canny edge detection preprocessor to the control_cond image.
             upscale_factor: The image upscaling factor (default: 1).
             progress_callback: Callback function to call on each step end.
 
@@ -237,8 +239,7 @@ class StableDiffusion:
 
         # ==================== Convert the control condition to a C sd_image_t ====================
 
-        if control_cond is not None:
-            control_cond = self._image_to_sd_image_t_p(control_cond)
+        control_cond = self._format_control_cond(control_cond, canny)
 
         # Run the txt2img to generate images
         c_images = sd_cpp.txt2img(
@@ -286,6 +287,7 @@ class StableDiffusion:
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
@@ -309,6 +311,7 @@ class StableDiffusion:
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
+            canny: Apply canny edge detection preprocessor to the control_cond image.
             upscale_factor: The image upscaling factor (default: 1).
             progress_callback: Callback function to call on each step end.
 
@@ -339,8 +342,10 @@ class StableDiffusion:
 
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
-        # ==================== Convert the image to a byte array ====================
+        # ==================== Convert the control condition to a C sd_image_t ====================
+        control_cond = self._format_control_cond(control_cond, canny)
 
+        # ==================== Convert the image to a byte array ====================
         image_pointer = self._image_to_sd_image_t_p(image)
 
         c_images = sd_cpp.img2img(
@@ -412,48 +417,107 @@ class StableDiffusion:
                 "Stable diffusion model not loaded. Make sure you have set the `model_path`"
             )
 
-        # Set a random seed if seed is negative
-        if seed < 0:
-            seed = random.randint(0, 10000)
+        # # Set a random seed if seed is negative
+        # if seed < 0:
+        #     seed = random.randint(0, 10000)
 
-        # ==================== Set the callback function ====================
+        # # ==================== Set the callback function ====================
 
-        if progress_callback is not None:
+        # if progress_callback is not None:
 
-            @sd_cpp.sd_progress_callback
-            def sd_progress_callback(
-                step: int,
-                steps: int,
-                time: float,
-                data: ctypes.c_void_p,
-            ):
-                progress_callback(step, steps, time)
+        #     @sd_cpp.sd_progress_callback
+        #     def sd_progress_callback(
+        #         step: int,
+        #         steps: int,
+        #         time: float,
+        #         data: ctypes.c_void_p,
+        #     ):
+        #         progress_callback(step, steps, time)
 
-            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+        #     sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
-        # ==================== Convert the image to a byte array ====================
+        # # ==================== Convert the image to a byte array ====================
 
-        image_pointer = self._image_to_sd_image_t_p(image)
+        # image_pointer = self._image_to_sd_image_t_p(image)
 
-        c_video = sd_cpp.img2vid(
-            self.model,
-            image_pointer,
-            width,
-            height,
-            video_frames,
-            motion_bucket_id,
-            fps,
-            augmentation_level,
-            min_cfg,
-            cfg_scale,
-            sample_method,
-            sample_steps,
-            strength,
-            seed,
-        )
+        # c_video = sd_cpp.img2vid(
+        #     self.model,
+        #     image_pointer,
+        #     width,
+        #     height,
+        #     video_frames,
+        #     motion_bucket_id,
+        #     fps,
+        #     augmentation_level,
+        #     min_cfg,
+        #     cfg_scale,
+        #     sample_method,
+        #     sample_steps,
+        #     strength,
+        #     seed,
+        # )
 
         # return self._sd_image_t_p_to_images(c_video, video_frames, 1)
         raise NotImplementedError("Not yet implemented.")
+
+    # ============================================
+    # Preprocess Canny
+    # ============================================
+
+    def preprocess_canny(
+        self,
+        image: Union[Image.Image, str],
+        width: int = 512,
+        height: int = 512,
+        high_threshold: float = 0.08,
+        low_threshold: float = 0.08,
+        weak: float = 0.8,
+        strong: float = 1.0,
+        inverse: bool = False,
+        output_as_c_uint8: bool = False,
+    ) -> Image.Image:
+        """Apply canny edge detection to an input image.
+
+        Args:
+            image: The input image path or Pillow Image.
+            width: Output image height, in pixel space (default: 512).
+            height: Output image width, in pixel space (default: 512).
+            high_threshold: High edge detection threshold.
+            low_threshold: Low edge detection threshold.
+            weak: Weak edge thickness.
+            strong: Strong edge thickness.
+            inverse: Invert the edge detection.
+            output_as_c_uint8: Return the output as a c_types uint8 pointer.
+
+        Returns:
+            A Pillow Image."""
+
+        # Convert the image to a C uint8 pointer
+        data, width, height = self._cast_image(image)
+
+        # Run the preprocess canny
+        c_image = sd_cpp.preprocess_canny(
+            data,
+            width,
+            height,
+            high_threshold,
+            low_threshold,
+            weak,
+            strong,
+            inverse,
+        )
+
+        # Return the c_image if output_as_c_uint8 (for running inside txt2img/img2img pipeline)
+        if output_as_c_uint8:
+            return c_image
+
+        # Calculate the size of the data buffer (channels * width * height)
+        buffer_size = 3 * width * height
+
+        # Convert c_image to a Pillow Image
+        image = self._c_array_to_bytes(c_image, buffer_size)
+        image = self._bytes_to_image(image, width, height)
+        return image
 
     # ============================================
     # Image Upscaling
@@ -507,16 +571,16 @@ class StableDiffusion:
             image_bytes = self._image_to_sd_image_t_p(image)
 
             # Upscale the image
-            img = sd_cpp.upscale(
+            image = sd_cpp.upscale(
                 self.upscaler,
                 image_bytes,
                 upscale_factor,
             )
 
             # Load the image from the C sd_image_t and convert it to a PIL Image
-            img = self._dereference_sd_image_t_p(img)
-            img = self._bytes_to_image(img["data"], img["width"], img["height"])
-            upscaled_images.append(img)
+            image = self._dereference_sd_image_t_p(image)
+            image = self._bytes_to_image(image["data"], image["width"], image["height"])
+            upscaled_images.append(image)
 
         return upscaled_images
 
@@ -524,69 +588,113 @@ class StableDiffusion:
     # Utility functions
     # ============================================
 
-    # ============= Image to C sd_image_t =============
-
-    def _image_to_sd_image_t_p(self, img: Union[Image.Image, str], channel: int = 3):
-        """Convert a PIL Image or image path to a C sd_image_t."""
-
+    def _format_image(
+        self,
+        image: Union[Image.Image, str],
+    ) -> Image.Image:
+        """Convert an image path or Pillow Image to a Pillow Image of RGBA format."""
         # Convert image path to image if str
-        if isinstance(img, str):
-            img = Image.open(img)
+        if isinstance(image, str):
+            image = Image.open(image)
 
         # Convert any non RGBA to RGBA
-        if img.format != "PNG":
-            img = img.convert("RGBA")
+        if image.format != "PNG":
+            image = image.convert("RGBA")
+
+        return image, image.width, image.height
+
+    def _format_control_cond(
+        self,
+        control_cond: Optional[Union[Image.Image, str]],
+        canny: bool,
+    ) -> Optional[Image.Image]:
+        """Convert an image path or Pillow Image to an C sd_image_t image."""
+
+        if not control_cond:
+            return None
+
+        if canny:
+            # Convert Pillow Image to canny edge detection image then format into C sd_image_t
+            image, width, height = self._format_image(control_cond)
+            image = self.preprocess_canny(image, output_as_c_uint8=True)
+            image = self._c_uint8_to_sd_image_t_p(image, width, height)
+        else:
+            # Convert Pillow Image to C sd_image_t
+            image = self._image_to_sd_image_t_p(control_cond)
+        return image
+
+    # ============= Image to C uint8 pointer =============
+
+    def _cast_image(self, image: Union[Image.Image, str]):
+        """Cast a PIL Image to a C uint8 pointer."""
+
+        image, width, height = self._format_image(image)
 
         # Convert the PIL Image to a byte array
-        img_bytes = img.tobytes()
+        image_bytes = image.tobytes()
 
+        data = ctypes.cast(
+            (ctypes.c_byte * len(image_bytes))(*image_bytes),
+            ctypes.POINTER(ctypes.c_uint8),
+        )
+        return data, width, height
+
+    # ============= Image to C sd_image_t =============
+
+    def _c_uint8_to_sd_image_t_p(
+        self, image: ctypes.c_uint8, width, height, channel: int = 3
+    ):
         # Create a new C sd_image_t
         c_image = sd_cpp.sd_image_t(
-            width=img.width,
-            height=img.height,
+            width=width,
+            height=height,
             channel=channel,
-            data=ctypes.cast(
-                (ctypes.c_byte * len(img_bytes))(*img_bytes),
-                ctypes.POINTER(ctypes.c_uint8),
-            ),
+            data=image,
         )
+        return c_image
+
+    def _image_to_sd_image_t_p(self, image: Union[Image.Image, str]):
+        """Convert a PIL Image or image path to a C sd_image_t."""
+
+        data, width, height = self._cast_image(image)
+
+        # Create a new C sd_image_t
+        c_image = self._c_uint8_to_sd_image_t_p(data, width, height)
         return c_image
 
     # ============= C sd_image_t to Image =============
 
+    def _c_array_to_bytes(self, c_array, buffer_size: int):
+        return bytearray(
+            ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents
+        )
+
     def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t):
         """Dereference a C sd_image_t pointer to a Python dictionary with height, width, channel and data (bytes)."""
-
-        def _c_array_to_bytes(c_array, buffer_size: int):
-            return bytearray(
-                ctypes.cast(
-                    c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)
-                ).contents
-            )
 
         # Calculate the size of the data buffer
         buffer_size = c_image.channel * c_image.width * c_image.height
 
-        img = {
+        image = {
             "width": c_image.width,
             "height": c_image.height,
             "channel": c_image.channel,
-            "data": _c_array_to_bytes(c_image.data, buffer_size),
+            "data": self._c_array_to_bytes(c_image.data, buffer_size),
         }
-        return img
+        return image
 
     def _image_slice(
         self, c_images: sd_cpp.sd_image_t_p, count: int, upscale_factor: int
     ):
         """Slice a C array of images."""
-        img_array = ctypes.cast(
+        image_array = ctypes.cast(
             c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)
         ).contents
 
         images = []
 
         for i in range(count):
-            c_img = img_array[i]
+            c_image = image_array[i]
 
             # Upscale the image
             if upscale_factor > 1:
@@ -595,14 +703,14 @@ class StableDiffusion:
                         "Upscaling model not loaded. Make sure you have set the `upscaler_path`"
                     )
                 else:
-                    c_img = sd_cpp.upscale(
+                    c_image = sd_cpp.upscale(
                         self.upscaler,
-                        c_img,
+                        c_image,
                         upscale_factor,
                     )
 
-            img = self._dereference_sd_image_t_p(c_img)
-            images.append(img)
+            image = self._dereference_sd_image_t_p(c_image)
+            images.append(image)
 
         # Return the list of images
         return images
@@ -617,8 +725,10 @@ class StableDiffusion:
 
         # Convert each image to PIL Image
         for i in range(len(images)):
-            img = images[i]
-            images[i] = self._bytes_to_image(img["data"], img["width"], img["height"])
+            image = images[i]
+            images[i] = self._bytes_to_image(
+                image["data"], image["width"], image["height"]
+            )
 
         return images
 
@@ -626,13 +736,13 @@ class StableDiffusion:
 
     def _bytes_to_image(self, byte_data: bytes, width: int, height: int):
         """Convert a byte array to a PIL Image."""
-        img = Image.new("RGBA", (width, height))
+        image = Image.new("RGBA", (width, height))
 
         for y in range(height):
             for x in range(width):
                 idx = (y * width + x) * 3
-                img.putpixel(
+                image.putpixel(
                     (x, y),
                     (byte_data[idx], byte_data[idx + 1], byte_data[idx + 2], 255),
                 )
-        return img
+        return image

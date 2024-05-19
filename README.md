@@ -228,9 +228,6 @@ make clean
 
 ## To Do
 
-- [ ] Add high-level API for conversion of model types
-- [ ] get preprocess_canny working
-- [ ] test clip
 - [ ] Add options for these torch.FloatTensor, PIL.Image.Image, np.ndarray, List[torch.FloatTensor], List[PIL.Image.Image], or List[np.ndarray]
 
 ## References
