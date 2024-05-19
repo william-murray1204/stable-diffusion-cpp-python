@@ -35,3 +35,8 @@ stable_diffusion_cpp.sd_set_log_callback(sd_log_callback, ctypes.c_void_p(0))
 
 def set_verbose(verbose: bool):
     logger.setLevel(logging.DEBUG if verbose else logging.ERROR)
+
+
+def log_event(level: int, message: str):
+    if logger.level <= SD_LOG_LEVEL_TO_LOGGING_LEVEL[level]:
+        print(message)

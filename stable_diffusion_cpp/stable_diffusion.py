@@ -10,7 +10,7 @@ from stable_diffusion_cpp.stable_diffusion_cpp import GGMLType
 
 
 from ._internals import _StableDiffusionModel, _UpscalerModel
-from ._logger import set_verbose
+from ._logger import set_verbose, log_event
 
 
 class StableDiffusion:
@@ -239,7 +239,9 @@ class StableDiffusion:
 
         # ==================== Convert the control condition to a C sd_image_t ====================
 
-        control_cond = self._format_control_cond(control_cond, canny)
+        control_cond = self._format_control_cond(
+            control_cond, canny, self.control_net_path
+        )
 
         # Run the txt2img to generate images
         c_images = sd_cpp.txt2img(
@@ -343,7 +345,9 @@ class StableDiffusion:
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
         # ==================== Convert the control condition to a C sd_image_t ====================
-        control_cond = self._format_control_cond(control_cond, canny)
+        control_cond = self._format_control_cond(
+            control_cond, canny, self.control_net_path
+        )
 
         # ==================== Convert the image to a byte array ====================
         image_pointer = self._image_to_sd_image_t_p(image)
@@ -607,9 +611,14 @@ class StableDiffusion:
         self,
         control_cond: Optional[Union[Image.Image, str]],
         canny: bool,
+        control_net_path: str,
     ) -> Optional[Image.Image]:
         """Convert an image path or Pillow Image to an C sd_image_t image."""
 
+        # Skip control condition if control net path not set
+        if not control_net_path:
+            log_event(1, "'control_net_path' not set. Skipping control condition.")
+            return None
         if not control_cond:
             return None
 
