@@ -345,11 +345,19 @@ class StableDiffusion:
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
         # ==================== Convert the control condition to a C sd_image_t ====================
+
         control_cond = self._format_control_cond(
             control_cond, canny, self.control_net_path
         )
 
+        # ==================== Resize the input image ====================
+
+        image = self._resize_image(
+            image, width, height
+        )  # Input image and generated image must have the same size
+
         # ==================== Convert the image to a byte array ====================
+
         image_pointer = self._image_to_sd_image_t_p(image)
 
         c_images = sd_cpp.img2img(
@@ -439,6 +447,12 @@ class StableDiffusion:
         #         progress_callback(step, steps, time)
 
         #     sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
+        # # ==================== Resize the input image ====================
+
+        # image = self._resize_image(
+        #     image, width, height
+        # )  # Input image and generated image must have the same size
 
         # # ==================== Convert the image to a byte array ====================
 
@@ -592,6 +606,17 @@ class StableDiffusion:
     # Utility functions
     # ============================================
 
+    def _resize_image(
+        self, image: Union[Image.Image, str], width: int, height: int
+    ) -> Image.Image:
+        """Resize an image to a new width and height."""
+        image, _, _ = self._format_image(image)
+
+        # Resize the image if the width and height are different
+        if image.width != width or image.height != height:
+            image = image.resize((width, height), Image.Resampling.BILINEAR)
+        return image
+
     def _format_image(
         self,
         image: Union[Image.Image, str],
@@ -604,6 +629,10 @@ class StableDiffusion:
         # Convert any non RGBA to RGBA
         if image.format != "PNG":
             image = image.convert("RGBA")
+
+        # Ensure the image is in RGB mode
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
         return image, image.width, image.height
 
