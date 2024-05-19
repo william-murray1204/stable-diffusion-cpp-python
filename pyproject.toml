@@ -9,11 +9,22 @@ description = "Python bindings for the stable-diffusion.cpp library"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
-    { name = "William Murray", email = "william.murray1204@gmail.com" },
+    { name = "William Murray" },
+]
+maintainers = [
+    { name = "William Murray" },
 ]
 dependencies = [
     "typing-extensions>=4.5.0",
     "pillow>=10.2.0",
+]
+keywords = [
+    "diffusion",
+    "stable-diffusion",
+    "python",
+    "cpp-bindings",
+    "artificial-intelligence",
+    "machine-learning",
 ]
 requires-python = ">=3.8"
 classifiers = [
@@ -40,6 +51,3 @@ input = "stable_diffusion_cpp/__init__.py"
 Homepage = "https://github.com/william-murray1204/stable-diffusion-cpp-python"
 Issues = "https://github.com/william-murray1204/stable-diffusion-cpp-python/issues"
 Documentation = "https://github.com/william-murray1204/stable-diffusion-cpp-python/blob/main/README.md"
-
-[tool.pytest.ini_options]
-testpaths = "tests"

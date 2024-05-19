@@ -615,11 +615,11 @@ class StableDiffusion:
     ) -> Optional[Image.Image]:
         """Convert an image path or Pillow Image to an C sd_image_t image."""
 
-        # Skip control condition if control net path not set
+        if not control_cond:
+            return None
+
         if not control_net_path:
             log_event(1, "'control_net_path' not set. Skipping control condition.")
-            return None
-        if not control_cond:
             return None
 
         if canny:

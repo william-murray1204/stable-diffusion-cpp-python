@@ -16,8 +16,6 @@ try:
     images = stable_diffusion.img_to_img(
         prompt="blue eyes",
         image=INPUT_IMAGE_PATH,
-        control_cond=INPUT_IMAGE_PATH,
-        canny=False,
         strength=0.4,
         progress_callback=callback,
     )
