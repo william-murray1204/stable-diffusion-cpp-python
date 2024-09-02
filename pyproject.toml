@@ -51,3 +51,6 @@ input = "stable_diffusion_cpp/__init__.py"
 Homepage = "https://github.com/william-murray1204/stable-diffusion-cpp-python"
 Issues = "https://github.com/william-murray1204/stable-diffusion-cpp-python/issues"
 Documentation = "https://github.com/william-murray1204/stable-diffusion-cpp-python/blob/main/README.md"
+
+[tool.black]
+line-length = 130

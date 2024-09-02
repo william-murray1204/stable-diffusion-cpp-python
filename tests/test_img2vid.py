@@ -1,3 +1,5 @@
+# import os
+# import traceback
 # from stable_diffusion_cpp import StableDiffusion
 
 # MODEL_PATH = "C:\\stable-diffusion\\svd_xt.safetensors"
@@ -13,10 +15,15 @@
 # try:
 #     images = stable_diffusion.img_to_vid(image=input_image, progress_callback=callback)
 
+#     OUTPUT_DIR = "tests/outputs"
+#     if not os.path.exists(OUTPUT_DIR):
+#         os.makedirs(OUTPUT_DIR)
+
 #     for i, image in enumerate(images):
-#         image.save(f"output_img2vid_{i}.png")
+#         image.save(f"{OUTPUT_DIR}/img2vid_{i}.png")
 
 # except Exception as e:
+#     traceback.print_exc()
 #     print("Test - img2vid failed: ", e)
 
 

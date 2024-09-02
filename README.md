@@ -1,6 +1,11 @@
 # 🖼️ Python Bindings for [`stable-diffusion.cpp`](https://github.com/leejet/stable-diffusion.cpp)
 
 Simple Python bindings for **@leejet's** [`stable-diffusion.cpp`](https://github.com/leejet/stable-diffusion.cpp) library.
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![PyPi version](https://badgen.net/pypi/v/pywhispercpp)](https://pypi.org/project/stable-diffusion-cpp-python/)
+[![Downloads](https://static.pepy.tech/badge/stable-diffusion-cpp-python)](https://pepy.tech/project/stable-diffusion-cpp-python)
+
 This package provides:
 
 - Low-level access to C API via `ctypes` interface.
@@ -24,7 +29,7 @@ pip install stable-diffusion-cpp-python
 
 This will also build `stable-diffusion.cpp` from source and install it alongside this python package.
 
-If this fails, add `--verbose` to the `pip install` see the full cmake build log.
+If this fails, add `--verbose` to the `pip install` to see the full cmake build log.
 
 ### Installation Configuration
 
@@ -141,18 +146,21 @@ Below is a short example demonstrating how to use the high-level API to generate
 >>> stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
       wtype="default", # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
-      # seed=1337, # Uncomment to set a specific seed
 )
 >>> output = stable_diffusion.txt_to_img(
       "a lovely cat", # Prompt
+      # seed=1337, # Uncomment to set a specific seed
 )
 ```
 
-#### with LoRA
+- Other examples for the high-level API can be found in the [tests](tests) directory.
 
-- You can specify the directory where the lora weights are stored via `lora_model_dir`. If not specified, the default is the current working directory.
+#### With LoRA
 
-- LoRA is specified via prompt, just like [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#lora).
+You can specify the directory where the lora weights are stored via `lora_model_dir`. If not specified, the default is the current working directory.
+
+- LoRA is specified via prompt, just like [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#lora). (e.g. `<lora:marblesh:1>`)
+- LoRAs will not work when using quantized models. You must instead use a full precision `.safetensors` model.
 
 Here's a simple example:
 
@@ -225,10 +233,6 @@ To clear the cache.
 ```bash
 make clean
 ```
-
-## To Do
-
-- [ ] Add options for these torch.FloatTensor, PIL.Image.Image, np.ndarray, List[torch.FloatTensor], List[PIL.Image.Image], or List[np.ndarray]
 
 ## References
 

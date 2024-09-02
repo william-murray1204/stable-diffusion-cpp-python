@@ -1,15 +1,13 @@
+import os
+import traceback
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "C:\\stable-diffusion\\v15PrunedEmaonly.safetensors"
-CONTROLNET_MODEL_PATH = (
-    "C:\\stable-diffusion\\control_nets\\control_openpose-fp16.safetensors"
-)
+CONTROLNET_MODEL_PATH = "C:\\stable-diffusion\\control_nets\\control_openpose-fp16.safetensors"
 
 INPUT_IMAGE_PATH = "assets\\input.png"
 
-stable_diffusion = StableDiffusion(
-    model_path=MODEL_PATH, control_net_path=CONTROLNET_MODEL_PATH
-)
+stable_diffusion = StableDiffusion(model_path=MODEL_PATH, control_net_path=CONTROLNET_MODEL_PATH)
 
 
 def callback(step: int, steps: int, time: float):
@@ -30,9 +28,15 @@ try:
             canny=prompt["canny"],
             progress_callback=callback,
         )
+
+        OUTPUT_DIR = "tests/outputs"
+        if not os.path.exists(OUTPUT_DIR):
+            os.makedirs(OUTPUT_DIR)
+
         # Save images
         for i, image in enumerate(images):
-            image.save(f"output_controlnet{prompt['add']}_{i}.png")
+            image.save(f"{OUTPUT_DIR}/controlnet{prompt['add']}_{i}.png")
 
 except Exception as e:
+    traceback.print_exc()
     print("Test - controlnet failed: ", e)
