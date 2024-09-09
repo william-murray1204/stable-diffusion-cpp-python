@@ -2,7 +2,7 @@ import os
 import traceback
 from stable_diffusion_cpp import StableDiffusion
 
-MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.q8_0.gguf"
+MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
 
 INPUT_IMAGE_PATH = "assets\\input.png"
 
