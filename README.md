@@ -199,9 +199,9 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
     diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # in place of model_path
-    clip_l_path="../models/t5xxl_q8_0.gguf",
-    t5xxl_path="../models/clip_l-q8_0.gguf",
-    vae_path="../models/ae-f16.gguf",
+    clip_l_path="../models/t5xxl_fp16.safetensors",
+    t5xxl_path="../models/clip_l.safetensors",
+    vae_path="../models/ae.safetensors",
 )
 output = stable_diffusion.flux_img(
       prompt="a lovely cat holding a sign says 'flux.cpp'",
