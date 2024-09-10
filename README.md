@@ -9,7 +9,7 @@ Simple Python bindings for **@leejet's** [`stable-diffusion.cpp`](https://github
 This package provides:
 
 - Low-level access to C API via `ctypes` interface.
-- High-level Python API for stable diffusion image generation.
+- High-level Python API for Stable Diffusion and FLUX image generation.
 
 ## Installation
 
@@ -141,19 +141,24 @@ The high-level API provides a simple managed interface through the `StableDiffus
 
 Below is a short example demonstrating how to use the high-level API to generate a simple image:
 
+### Text to Image
+
 ```python
->>> from stable_diffusion_cpp import StableDiffusion
->>> stable_diffusion = StableDiffusion(
+from stable_diffusion_cpp import StableDiffusion
+
+def callback(step: int, steps: int, time: float):
+    print("Completed step: {} of {}".format(step, steps))
+
+stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      wtype="default", # Weight type (options: default, f32, f16, q4_0, q4_1, q5_0, q5_1, q8_0)
+      wtype="default", # Weight type (default: automatically determines the weight type of the model file)
+      progress_callback=callback,
 )
->>> output = stable_diffusion.txt_to_img(
+output = stable_diffusion.txt_to_img(
       "a lovely cat", # Prompt
       # seed=1337, # Uncomment to set a specific seed
 )
 ```
-
-- Other examples for the high-level API can be found in the [tests](tests) directory.
 
 #### With LoRA
 
@@ -165,15 +170,50 @@ You can specify the directory where the lora weights are stored via `lora_model_
 Here's a simple example:
 
 ```python
->>> from stable_diffusion_cpp import StableDiffusion
->>> stable_diffusion = StableDiffusion(
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
       lora_model_dir="../models/",
 )
->>> output = stable_diffusion.txt_to_img(
+output = stable_diffusion.txt_to_img(
       "a lovely cat<lora:marblesh:1>", # Prompt
 )
 ```
+
+- The `lora_model_dir` argument is used in the same way for FLUX image generation.
+
+### FLUX Image Generation
+
+FLUX models should be run using the same implementation as the [stable-diffusion.cpp FLUX documentation](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux.md) where the `diffusion_model_path` argument is used in place of the `model_path`. The `clip_l_path`, `t5xxl_path`, and `vae_path` arguments are also required for inference to function.
+
+Download the weights from the links below:
+
+- Preconverted gguf weights from [FLUX.1-dev-gguf](https://huggingface.co/leejet/FLUX.1-dev-gguf) or [FLUX.1-schnell](https://huggingface.co/leejet/FLUX.1-schnell-gguf), this way you don't have to do the conversion yourself.
+- Download `vae` from https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/ae.safetensors
+- Download `clip_l` from https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors
+- Download `t5xxl` from https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+    diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # in place of model_path
+    clip_l_path="../models/t5xxl_q8_0.gguf",
+    t5xxl_path="../models/clip_l-q8_0.gguf",
+    vae_path="../models/ae-f16.gguf",
+)
+output = stable_diffusion.flux_img(
+      prompt="a lovely cat holding a sign says 'flux.cpp'",
+      sample_steps=4,
+      cfg_scale=1.0, # a cfg_scale of 1 is recommended
+      sample_method="euler", # euler is recommended for FLUX
+)
+```
+
+### Other High-level API Examples
+
+Other examples for the high-level API (such as image to image, upscaling and model conversion) can be found in the [tests](tests) directory.
 
 ## Low-level API
 
@@ -183,14 +223,14 @@ The entire low-level API can be found in [stable_diffusion_cpp/stable_diffusion_
 Below is a short example demonstrating how to use the low-level API:
 
 ```python
->>> import stable_diffusion_cpp as sd_cpp
->>> import ctypes
->>> from PIL import Image
+import stable_diffusion_cpp as sd_cpp
+import ctypes
+from PIL import Image
 
->>> img = Image.open("path/to/image.png")
->>> img_bytes = img.tobytes()
+img = Image.open("path/to/image.png")
+img_bytes = img.tobytes()
 
->>> c_image = sd_cpp.sd_image_t(
+c_image = sd_cpp.sd_image_t(
       width=img.width,
       height=img.height,
       channel=channel,
@@ -200,13 +240,13 @@ Below is a short example demonstrating how to use the low-level API:
       ),
 ) # Create a new C sd_image_t
 
->>> img = sd_cpp.upscale(
+img = sd_cpp.upscale(
       self.upscaler,
       image_bytes,
       upscale_factor,
 ) # Upscale the image
 
->>> sd_cpp.free_image(c_image)
+sd_cpp.free_image(c_image)
 ```
 
 ## Development
