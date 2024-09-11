@@ -199,14 +199,14 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
     diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # in place of model_path
-    clip_l_path="../models/t5xxl_fp16.safetensors",
-    t5xxl_path="../models/clip_l.safetensors",
+    clip_l_path="../models/clip_l.safetensors",
+    t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
 )
-output = stable_diffusion.flux_img(
+output = stable_diffusion.txt_to_img(
       prompt="a lovely cat holding a sign says 'flux.cpp'",
       sample_steps=4,
-      cfg_scale=1.0, # a cfg_scale of 1 is recommended
+      cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
       sample_method="euler", # euler is recommended for FLUX
 )
 ```
