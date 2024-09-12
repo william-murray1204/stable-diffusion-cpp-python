@@ -42,13 +42,12 @@ All `stable-diffusion.cpp` cmake build options can be set via the `CMAKE_ARGS` e
 
 ```bash
 # Linux and Mac
-CMAKE_ARGS="-DGGML_OPENBLAS=ON" \
-  pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
 ```
 
 ```powershell
 # Windows
-$env:CMAKE_ARGS = "-DGGML_OPENBLAS=ON"
+$env:CMAKE_ARGS="-DSD_CUBLAS=ON"
 pip install stable-diffusion-cpp-python
 ```
 
@@ -61,14 +60,13 @@ They can also be set via `pip install -C / --config-settings` command and saved 
 
 ```bash
 pip install --upgrade pip # ensure pip is up to date
-pip install stable-diffusion-cpp-python \
-  -C cmake.args="-DGGML_OPENBLAS=ON"
+pip install stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 ```
 
 ```txt
 # requirements.txt
 
-stable-diffusion-cpp-python -C cmake.args="-DGGML_OPENBLAS=ON"
+stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 ```
 
 </details>
@@ -77,6 +75,7 @@ stable-diffusion-cpp-python -C cmake.args="-DGGML_OPENBLAS=ON"
 
 Below are some common backends, their build commands and any additional environment variables required.
 
+<!-- OpenBLAS -->
 <details>
 <summary>Using OpenBLAS (CPU)</summary>
 
@@ -86,19 +85,21 @@ CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
 
 </details>
 
+<!-- CUBLAS -->
 <details>
-<summary>Using cuBLAS (CUDA)</summary>
+<summary>Using CUBLAS (CUDA)</summary>
 
 This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure to have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). Recommended to have at least 4 GB of VRAM.
 
 ```bash
-CMAKE_ARGS="-DSD_CUBLAS=on" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
 
+<!-- HIPBLAS -->
 <details>
-<summary>Using hipBLAS (ROCm)</summary>
+<summary>Using HIPBLAS (ROCm)</summary>
 
 This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure to have the ROCm toolkit installed.
 Windows Users Refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide.
@@ -109,6 +110,7 @@ CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_
 
 </details>
 
+<!-- Metal -->
 <details>
 <summary>Using Metal</summary>
 
@@ -120,6 +122,37 @@ CMAKE_ARGS="-DSD_METAL=ON" pip install stable-diffusion-cpp-python
 
 </details>
 
+<!-- Vulkan -->
+<details>
+<summary>Using Vulkan</summary>
+Install Vulkan SDK from https://www.lunarg.com/vulkan-sdk/.
+
+```bash
+CMAKE_ARGS="-DSD_VULKAN=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- SYCL -->
+<details>
+<summary>Using SYCL</summary>
+
+Using SYCL makes the computation run on the Intel GPU. Please make sure you have installed the related driver and [Intel® oneAPI Base toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html) before start. More details and steps can refer to [llama.cpp SYCL backend](https://github.com/ggerganov/llama.cpp/blob/master/docs/backend/SYCL.md#linux).
+
+```bash
+# Export relevant ENV variables
+source /opt/intel/oneapi/setvars.sh
+
+# Option 1: Use FP32 (recommended for better performance in most cases)
+CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install stable-diffusion-cpp-python
+
+# Option 2: Use FP16
+CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DGGML_SYCL_F16=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- Flash Attention -->
 <details>
 <summary>Using Flash Attention</summary>
 
@@ -152,10 +185,10 @@ def callback(step: int, steps: int, time: float):
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
       wtype="default", # Weight type (default: automatically determines the weight type of the model file)
-      progress_callback=callback,
 )
 output = stable_diffusion.txt_to_img(
-      "a lovely cat", # Prompt
+      prompt="a lovely cat",
+      progress_callback=callback,
       # seed=1337, # Uncomment to set a specific seed
 )
 ```
@@ -177,7 +210,7 @@ stable_diffusion = StableDiffusion(
       lora_model_dir="../models/",
 )
 output = stable_diffusion.txt_to_img(
-      "a lovely cat<lora:marblesh:1>", # Prompt
+      prompt="a lovely cat<lora:marblesh:1>",
 )
 ```
 
