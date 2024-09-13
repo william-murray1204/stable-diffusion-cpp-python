@@ -42,13 +42,12 @@ All `stable-diffusion.cpp` cmake build options can be set via the `CMAKE_ARGS` e
 
 ```bash
 # Linux and Mac
-CMAKE_ARGS="-DGGML_OPENBLAS=ON" \
-  pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
 ```
 
 ```powershell
 # Windows
-$env:CMAKE_ARGS = "-DGGML_OPENBLAS=ON"
+$env:CMAKE_ARGS="-DSD_CUBLAS=ON"
 pip install stable-diffusion-cpp-python
 ```
 
@@ -61,14 +60,13 @@ They can also be set via `pip install -C / --config-settings` command and saved 
 
 ```bash
 pip install --upgrade pip # ensure pip is up to date
-pip install stable-diffusion-cpp-python \
-  -C cmake.args="-DGGML_OPENBLAS=ON"
+pip install stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 ```
 
 ```txt
 # requirements.txt
 
-stable-diffusion-cpp-python -C cmake.args="-DGGML_OPENBLAS=ON"
+stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 ```
 
 </details>
@@ -77,31 +75,26 @@ stable-diffusion-cpp-python -C cmake.args="-DGGML_OPENBLAS=ON"
 
 Below are some common backends, their build commands and any additional environment variables required.
 
+<!-- CUBLAS -->
 <details>
-<summary>Using OpenBLAS (CPU)</summary>
+<summary>Using CUBLAS (CUDA)</summary>
+
+This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure you have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). You can check your installed CUDA toolkit version by running `nvcc --version`.
+
+- It is recommended you have at least 4 GB of VRAM.
 
 ```bash
-CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
 
+<!-- HIPBLAS -->
 <details>
-<summary>Using cuBLAS (CUDA)</summary>
+<summary>Using HIPBLAS (ROCm)</summary>
 
-This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure to have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). Recommended to have at least 4 GB of VRAM.
-
-```bash
-CMAKE_ARGS="-DSD_CUBLAS=on" pip install stable-diffusion-cpp-python
-```
-
-</details>
-
-<details>
-<summary>Using hipBLAS (ROCm)</summary>
-
-This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure to have the ROCm toolkit installed.
-Windows Users Refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide.
+This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure you have the ROCm toolkit installed.
+Windows users refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide.
 
 ```bash
 CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=gfx1101" pip install stable-diffusion-cpp-python
@@ -109,6 +102,7 @@ CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_
 
 </details>
 
+<!-- Metal -->
 <details>
 <summary>Using Metal</summary>
 
@@ -120,6 +114,37 @@ CMAKE_ARGS="-DSD_METAL=ON" pip install stable-diffusion-cpp-python
 
 </details>
 
+<!-- Vulkan -->
+<details>
+<summary>Using Vulkan</summary>
+Install Vulkan SDK from https://www.lunarg.com/vulkan-sdk/.
+
+```bash
+CMAKE_ARGS="-DSD_VULKAN=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- SYCL -->
+<details>
+<summary>Using SYCL</summary>
+
+Using SYCL makes the computation run on the Intel GPU. Please make sure you have installed the related driver and [Intel® oneAPI Base toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html) before start. More details and steps can refer to [llama.cpp SYCL backend](https://github.com/ggerganov/llama.cpp/blob/master/docs/backend/SYCL.md#linux).
+
+```bash
+# Export relevant ENV variables
+source /opt/intel/oneapi/setvars.sh
+
+# Option 1: Use FP32 (recommended for better performance in most cases)
+CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip install stable-diffusion-cpp-python
+
+# Option 2: Use FP16
+CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DGGML_SYCL_F16=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- Flash Attention -->
 <details>
 <summary>Using Flash Attention</summary>
 
@@ -127,6 +152,16 @@ Enabling flash attention reduces memory usage by at least 400 MB. At the moment,
 
 ```bash
 CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- OpenBLAS -->
+<details>
+<summary>Using OpenBLAS</summary>
+
+```bash
+CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -151,16 +186,19 @@ def callback(step: int, steps: int, time: float):
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      wtype="default", # Weight type (default: automatically determines the weight type of the model file)
-      progress_callback=callback,
+      wtype="default", # Weight type (default: automatically determines weight type of model file)
 )
 output = stable_diffusion.txt_to_img(
-      "a lovely cat", # Prompt
+      prompt="a lovely cat",
+      width=512, # Must be a multiple of 64
+      height=512, # Must be a multiple of 64
+      progress_callback=callback,
       # seed=1337, # Uncomment to set a specific seed
 )
+output[0].save("output.png") # Image returned as list of PIL Images
 ```
 
-#### With LoRA
+#### With LoRA (Stable Diffusion)
 
 You can specify the directory where the lora weights are stored via `lora_model_dir`. If not specified, the default is the current working directory.
 
@@ -174,10 +212,10 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      lora_model_dir="../models/",
+      lora_model_dir="../models/", # This should point to folder where LoRA weights are stored (not an individual file)
 )
 output = stable_diffusion.txt_to_img(
-      "a lovely cat<lora:marblesh:1>", # Prompt
+      prompt="a lovely cat<lora:marblesh:1>",
 )
 ```
 
@@ -198,7 +236,7 @@ Download the weights from the links below:
 from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
-    diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # in place of model_path
+    diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # In place of model_path
     clip_l_path="../models/clip_l.safetensors",
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
@@ -210,6 +248,16 @@ output = stable_diffusion.txt_to_img(
       sample_method="euler", # euler is recommended for FLUX
 )
 ```
+
+#### With LoRA (FLUX)
+
+LoRAs can be used with FLUX models in the same way as Stable Diffusion models ([as shown above](#with-lora-stable-diffusion)).
+
+Note that:
+
+- It is recommended to use LoRA with naming formats compatible with ComfyUI.
+- Only the Flux-dev q8_0 will work with LoRAs.
+- You can download FLUX LoRA models from https://huggingface.co/XLabs-AI/flux-lora-collection/tree/main (you must use a comfy converted version!!!).
 
 ### Other High-level API Examples
 

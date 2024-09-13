@@ -7,7 +7,10 @@ MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431B
 
 LORA_DIR = "C:\\stable-diffusion\\loras"
 
-stable_diffusion = StableDiffusion(model_path=MODEL_PATH, lora_model_dir=LORA_DIR, )
+stable_diffusion = StableDiffusion(
+    model_path=MODEL_PATH,
+    lora_model_dir=LORA_DIR,
+)
 
 
 def callback(step: int, steps: int, time: float):
@@ -20,6 +23,10 @@ try:
         {"add": "", "prompt": "a lovely cat"},  # Without LORA
     ]
 
+    OUTPUT_DIR = "tests/outputs"
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
+
     for prompt in prompts:
         # Generate images
         images = stable_diffusion.txt_to_img(
@@ -27,10 +34,6 @@ try:
             sample_steps=4,
             progress_callback=callback,
         )
-
-        OUTPUT_DIR = "tests/outputs"
-        if not os.path.exists(OUTPUT_DIR):
-            os.makedirs(OUTPUT_DIR)
 
         # Save images
         for i, image in enumerate(images):
