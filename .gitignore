@@ -159,3 +159,5 @@ cython_debug/
 
 
 tests/outputs/
+temp/
+lib/

@@ -75,21 +75,13 @@ stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 
 Below are some common backends, their build commands and any additional environment variables required.
 
-<!-- OpenBLAS -->
-<details>
-<summary>Using OpenBLAS (CPU)</summary>
-
-```bash
-CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
-```
-
-</details>
-
 <!-- CUBLAS -->
 <details>
 <summary>Using CUBLAS (CUDA)</summary>
 
-This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure to have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). Recommended to have at least 4 GB of VRAM.
+This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure you have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). You can check your installed CUDA toolkit version by running `nvcc --version`.
+
+- It is recommended you have at least 4 GB of VRAM.
 
 ```bash
 CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
@@ -101,8 +93,8 @@ CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
 <details>
 <summary>Using HIPBLAS (ROCm)</summary>
 
-This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure to have the ROCm toolkit installed.
-Windows Users Refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide.
+This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure you have the ROCm toolkit installed.
+Windows users refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide.
 
 ```bash
 CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=gfx1101" pip install stable-diffusion-cpp-python
@@ -164,6 +156,16 @@ CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
 
 </details>
 
+<!-- OpenBLAS -->
+<details>
+<summary>Using OpenBLAS</summary>
+
+```bash
+CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
 ### Upgrading and Reinstalling
 
 To upgrade and rebuild `stable-diffusion-cpp-python` add `--upgrade --force-reinstall --no-cache-dir` flags to the `pip install` command to ensure the package is rebuilt from source.
@@ -184,16 +186,19 @@ def callback(step: int, steps: int, time: float):
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      wtype="default", # Weight type (default: automatically determines the weight type of the model file)
+      wtype="default", # Weight type (default: automatically determines weight type of model file)
 )
 output = stable_diffusion.txt_to_img(
       prompt="a lovely cat",
+      width=512, # Must be a multiple of 64
+      height=512, # Must be a multiple of 64
       progress_callback=callback,
       # seed=1337, # Uncomment to set a specific seed
 )
+output[0].save("output.png") # Image returned as list of PIL Images
 ```
 
-#### With LoRA
+#### With LoRA (Stable Diffusion)
 
 You can specify the directory where the lora weights are stored via `lora_model_dir`. If not specified, the default is the current working directory.
 
@@ -207,7 +212,7 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      lora_model_dir="../models/",
+      lora_model_dir="../models/", # This should point to folder where LoRA weights are stored (not an individual file)
 )
 output = stable_diffusion.txt_to_img(
       prompt="a lovely cat<lora:marblesh:1>",
@@ -231,7 +236,7 @@ Download the weights from the links below:
 from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
-    diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # in place of model_path
+    diffusion_model_path="../models/flux1-schnell-q3_k.gguf", # In place of model_path
     clip_l_path="../models/t5xxl_fp16.safetensors",
     t5xxl_path="../models/clip_l.safetensors",
     vae_path="../models/ae.safetensors",
@@ -243,6 +248,16 @@ output = stable_diffusion.flux_img(
       sample_method="euler", # euler is recommended for FLUX
 )
 ```
+
+#### With LoRA (FLUX)
+
+LoRAs can be used with FLUX models in the same way as Stable Diffusion models ([as shown above](#with-lora-stable-diffusion)).
+
+Note that:
+
+- It is recommended to use LoRA with naming formats compatible with ComfyUI.
+- Only the Flux-dev q8_0 will work with LoRAs.
+- You can download FLUX LoRA models from https://huggingface.co/XLabs-AI/flux-lora-collection/tree/main (you must use a comfy converted version!!!).
 
 ### Other High-level API Examples
 
