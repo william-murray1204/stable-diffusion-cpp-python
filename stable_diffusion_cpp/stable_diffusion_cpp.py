@@ -301,6 +301,7 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
     [
         ctypes.c_char_p,  # model_path
         ctypes.c_char_p,  # clip_l_path
+        ctypes.c_char_p, # clip_g_path
         ctypes.c_char_p,  # t5xxl_path
         ctypes.c_char_p,  # diffusion_model_path
         ctypes.c_char_p,  # vae_path
@@ -325,6 +326,7 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
 def new_sd_ctx(
     model_path: bytes,
     clip_l_path: bytes,
+    clip_g_path: bytes,
     t5xxl_path: bytes,
     diffusion_model_path: bytes,
     vae_path: bytes,

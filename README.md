@@ -259,6 +259,33 @@ Note that:
 - Only the Flux-dev q8_0 will work with LoRAs.
 - You can download FLUX LoRA models from https://huggingface.co/XLabs-AI/flux-lora-collection/tree/main (you must use a comfy converted version!!!).
 
+### SD3.5 Image Generation
+
+Download the weights from the links below:
+
+- Download sd3.5_large from https://huggingface.co/stabilityai/stable-diffusion-3.5-large/blob/main/sd3.5_large.safetensors
+- Download clip_g from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/clip_g.safetensors
+- Download clip_l from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/clip_l.safetensors
+- Download t5xxl from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp16.safetensors
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+    model_path="../models/sd3.5_large.safetensors",
+    clip_l_path="../models/clip_l.safetensors",
+    clip_g_path="../models/clip_g.safetensors",
+    t5xxl_path="../models/t5xxl_fp16.safetensors",
+)
+output = stable_diffusion.txt_to_img(
+      prompt="a lovely cat holding a sign says 'Stable diffusion 3.5 Large'",
+      height=1024,
+      width=1024,
+      cfg_scale=4.5,
+      sample_method="euler",
+)
+```
+
 ### Other High-level API Examples
 
 Other examples for the high-level API (such as image to image, upscaling and model conversion) can be found in the [tests](tests) directory.
@@ -293,8 +320,6 @@ img = sd_cpp.upscale(
       image_bytes,
       upscale_factor,
 ) # Upscale the image
-
-sd_cpp.free_image(c_image)
 ```
 
 ## Development

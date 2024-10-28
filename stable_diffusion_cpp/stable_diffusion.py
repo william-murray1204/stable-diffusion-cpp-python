@@ -22,6 +22,7 @@ class StableDiffusion:
         self,
         model_path: str = "",
         clip_l_path: str = "",
+        clip_g_path: str = "",
         t5xxl_path: str = "",
         diffusion_model_path: str = "",
         vae_path: str = "",
@@ -88,6 +89,7 @@ class StableDiffusion:
         # Params
         self.model_path = model_path
         self.clip_l_path = clip_l_path
+        self.clip_g_path = clip_g_path
         self.t5xxl_path = t5xxl_path
         self.diffusion_model_path = diffusion_model_path
         self.vae_path = vae_path
@@ -126,6 +128,7 @@ class StableDiffusion:
                 _StableDiffusionModel(
                     self.model_path,
                     self.clip_l_path,
+                    self.clip_g_path,
                     self.t5xxl_path,
                     self.diffusion_model_path,
                     self.vae_path,
