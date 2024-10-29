@@ -50,6 +50,15 @@ set ninja=C:\Program Files\ninja\ninja.exe
 The thing different from the regular CPU build is `-DSD_HIPBLAS=ON` ,
 `-G "Ninja"`, `-DCMAKE_C_COMPILER=clang`, `-DCMAKE_CXX_COMPILER=clang++`, `-DAMDGPU_TARGETS=gfx1100`
 
+Note:
+If you encounter an error such as the following:
+
+```Commandline
+lld-link: error: undefined symbol
+```
+
+Include the `-DGGML_OPENMP=OFF` argument in the CMake options to disable OpenMP, which, despite being marked as supported, is broken for ROCm on Windows. While it may work with newer ROCm versions, it generally has no impact unless you are partially offloading a model or using NKVO.
+
 > **Notice**: check the `clang` and `clang++` information:
 
 ```Commandline
@@ -75,15 +84,12 @@ InstalledDir: C:\Program Files\AMD\ROCm\5.5\bin
 
 > **Notice** that the `gfx1100` is the GPU architecture of my GPU, you can change it to your GPU architecture. Click here to see your architecture [LLVM Target](https://rocm.docs.amd.com/en/latest/release/windows_support.html#windows-supported-gpus)
 
-My GPU is AMD Radeon™ RX 7900 XTX Graphics, so I set it to `gfx1100`.
+As an example, if you have an AMD Radeon™ RX 7900 XTX Graphics Card you would set it to `gfx1100`.
 
-option:
+You can find the GPU architecture of your GPU in the [Accelerator and GPU hardware specifications](https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html) in the ROCm documentation.
 
-```commandline
-mkdir build
-cd build
-cmake .. -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=gfx1100
-cmake --build . --config Release
-```
+## Running stable-diffusion.cpp
 
-If everything went OK, `build\bin\sd.exe` file should appear.
+You may also need to specify your device ID if your system has multiple GPUs (such as an integrated GPU) by setting: `$env:HIP_VISIBLE_DEVICES=1` (Replace "1" with the appropriate device ID for your setup).
+
+In addition, setting the `HSA_OVERRIDE_GFX_VERSION` environment variable to the GPU architecture of your GPU with the following command is recommended: `$env:HSA_OVERRIDE_GFX_VERSION=11.0.1`

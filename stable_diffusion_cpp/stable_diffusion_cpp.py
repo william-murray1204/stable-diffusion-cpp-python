@@ -301,7 +301,7 @@ sd_ctx_t_p_ctypes = ctypes.c_void_p
     [
         ctypes.c_char_p,  # model_path
         ctypes.c_char_p,  # clip_l_path
-        ctypes.c_char_p, # clip_g_path
+        ctypes.c_char_p,  # clip_g_path
         ctypes.c_char_p,  # t5xxl_path
         ctypes.c_char_p,  # diffusion_model_path
         ctypes.c_char_p,  # vae_path

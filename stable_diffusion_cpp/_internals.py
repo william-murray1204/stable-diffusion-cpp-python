@@ -64,6 +64,7 @@ class _StableDiffusionModel:
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self.verbose = verbose
+
         self._exit_stack = ExitStack()
 
         self.model = None

@@ -32,12 +32,12 @@ class StableDiffusion:
         lora_model_dir: str = "",
         embed_dir: str = "",
         stacked_id_embed_dir: str = "",
-        vae_decode_only: bool = False,
+        vae_decode_only: bool = True,
         vae_tiling: bool = False,
         free_params_immediately: bool = False,
         n_threads: int = -1,
         wtype: Union[str, GGMLType, int, float, None] = "default",
-        rng_type: Union[str, RNGType, int, float, None] = "default",
+        rng_type: Union[str, RNGType, int, float, None] = "cuda",
         schedule: Union[str, Schedule, int, float, None] = "default",
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
@@ -71,7 +71,7 @@ class StableDiffusion:
             vae_decode_only: Process vae in decode only mode.
             vae_tiling: Process vae in tiles to reduce memory usage.
             free_params_immediately: Free parameters immediately after use.
-            n_threads: Number of threads to use for generation.
+            n_threads: Number of threads to use for generation (default: half the number of CPUs).
             wtype: The weight type (default: automatically determines the weight type of the model file).
             rng_type: Random number generator.
             schedule: Denoiser sigma schedule.
@@ -101,7 +101,7 @@ class StableDiffusion:
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
         self.free_params_immediately = free_params_immediately
-        self.n_threads = n_threads or max(multiprocessing.cpu_count() // 2, 1)  # Default to half the number of CPUs
+        self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
         self.schedule = schedule
@@ -109,6 +109,10 @@ class StableDiffusion:
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self._stack = contextlib.ExitStack()
+
+        # Default to half the number of CPUs
+        if n_threads <= 0:
+            self.n_threads = max(multiprocessing.cpu_count() // 2, 1)
 
         # =========== Logging ===========
 

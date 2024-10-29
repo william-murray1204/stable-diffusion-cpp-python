@@ -5,8 +5,13 @@ project(stable_diffusion_cpp)
 option(STABLE_DIFFUSION_BUILD "Build stable-diffusion.cpp shared library and install alongside python package" ON)
 
 if (STABLE_DIFFUSION_BUILD)
+    # Ensure we build shared libraries (dlls)
     set(BUILD_SHARED_LIBS "ON")
     option(SD_BUILD_SHARED_LIBS "" "ON")
+
+    # Explicitly set the build type to Release (default `Debug` is slow)
+    set(CMAKE_BUILD_TYPE "Release")
+    option(CMAKE_BUILD_TYPE "" "Release")
 
     add_subdirectory(vendor/stable-diffusion.cpp)
     install(
