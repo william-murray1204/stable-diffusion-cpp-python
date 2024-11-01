@@ -240,6 +240,7 @@ stable_diffusion = StableDiffusion(
     clip_l_path="../models/clip_l.safetensors",
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
+    vae_decode_only=True, # Can be True if we dont use img_to_img
 )
 output = stable_diffusion.txt_to_img(
       prompt="a lovely cat holding a sign says 'flux.cpp'",

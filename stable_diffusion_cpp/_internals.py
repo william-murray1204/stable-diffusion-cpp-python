@@ -32,7 +32,6 @@ class _StableDiffusionModel:
         stacked_id_embed_dir: str,
         vae_decode_only: bool,
         vae_tiling: bool,
-        free_params_immediately: bool,
         n_threads: int,
         wtype: int,
         rng_type: int,
@@ -55,7 +54,6 @@ class _StableDiffusionModel:
         self.stacked_id_embed_dir = stacked_id_embed_dir
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
-        self.free_params_immediately = free_params_immediately
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
@@ -98,7 +96,7 @@ class _StableDiffusionModel:
                     self.stacked_id_embed_dir.encode("utf-8"),
                     self.vae_decode_only,
                     self.vae_tiling,
-                    self.free_params_immediately,
+                    False,  # Free params immediately (unload model)
                     self.n_threads,
                     self.wtype,
                     self.rng_type,

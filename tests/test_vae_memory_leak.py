@@ -13,7 +13,6 @@ stable_diffusion = StableDiffusion(
     model_path=MODEL_PATH,
     # upscaler_path="C:\\stable-diffusion\\RealESRGAN_x4plus.pth",
     # vae_path=VAE_PATH,
-    # free_params_immediately=True,
     # vae_tiling=True,
     # keep_vae_on_cpu=True,
     # keep_clip_on_cpu=True,

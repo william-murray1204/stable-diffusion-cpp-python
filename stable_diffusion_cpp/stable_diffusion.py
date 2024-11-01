@@ -32,9 +32,8 @@ class StableDiffusion:
         lora_model_dir: str = "",
         embed_dir: str = "",
         stacked_id_embed_dir: str = "",
-        vae_decode_only: bool = True,
+        vae_decode_only: bool = False,
         vae_tiling: bool = False,
-        free_params_immediately: bool = False,
         n_threads: int = -1,
         wtype: Union[str, GGMLType, int, float, None] = "default",
         rng_type: Union[str, RNGType, int, float, None] = "cuda",
@@ -70,7 +69,6 @@ class StableDiffusion:
             stacked_id_embed_dir: Path to PHOTOMAKER stacked id embeddings.
             vae_decode_only: Process vae in decode only mode.
             vae_tiling: Process vae in tiles to reduce memory usage.
-            free_params_immediately: Free parameters immediately after use.
             n_threads: Number of threads to use for generation (default: half the number of CPUs).
             wtype: The weight type (default: automatically determines the weight type of the model file).
             rng_type: Random number generator.
@@ -100,7 +98,6 @@ class StableDiffusion:
         self.stacked_id_embed_dir = stacked_id_embed_dir
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
-        self.free_params_immediately = free_params_immediately
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
@@ -143,7 +140,6 @@ class StableDiffusion:
                     self.stacked_id_embed_dir,
                     self.vae_decode_only,
                     self.vae_tiling,
-                    self.free_params_immediately,
                     self.n_threads,
                     self.wtype,
                     self.rng_type,
@@ -350,6 +346,9 @@ class StableDiffusion:
 
         if self.model is None:
             raise Exception("Stable diffusion model not loaded.")
+        
+        if self.vae_decode_only == True:
+            raise Exception("Cannot run img_to_img with vae_decode_only set to True.")
 
         # =========== Validate string and int inputs ===========
 
@@ -463,6 +462,10 @@ class StableDiffusion:
 
         # if self.model is None:
         #     raise Exception("Stable diffusion model not loaded.")
+
+        # if self.vae_decode_only == True:
+        #     raise Exception("Cannot run img_to_vid with vae_decode_only set to True.")
+
 
         # # =========== Validate string and int inputs ===========
 

@@ -2,16 +2,11 @@ import os
 import traceback
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-dev-q8_0.gguf"
-T5XXL_PATH = "C:\\stable-diffusion\\flux\\flux_t5xxl_fp16.safetensors"
-CLIP_L_PATH = "C:\\stable-diffusion\\flux\\flux_clip_l.safetensors"
-VAE_PATH = "C:\\stable-diffusion\\flux\\flux_vae.safetensors"
-
-
-# DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-schnell-q3_k.gguf"
-# T5XXL_PATH = "C:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
-# CLIP_L_PATH = "C:\\stable-diffusion\\flux\\clip_l-q8_0.gguf"
-# VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
+DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-schnell-q3_k.gguf"
+# DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-dev-q8_0.gguf"
+T5XXL_PATH = "C:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
+CLIP_L_PATH = "C:\\stable-diffusion\\flux\\clip_l-q8_0.gguf"
+VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
 
 LORA_DIR = "C:\\stable-diffusion\\loras"
 
@@ -21,6 +16,7 @@ stable_diffusion = StableDiffusion(
     t5xxl_path=T5XXL_PATH,
     vae_path=VAE_PATH,
     lora_model_dir=LORA_DIR,
+    vae_decode_only=True,
 )
 
 
