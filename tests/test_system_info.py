@@ -1,7 +1,7 @@
 import os
 import traceback
-import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 
+import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 
 try:
     # Get system info

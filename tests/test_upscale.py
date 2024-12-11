@@ -1,5 +1,6 @@
 import os
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
 UPSCALER_MODEL_PATH = "C:\\stable-diffusion\\RealESRGAN_x4plus.pth"

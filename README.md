@@ -195,7 +195,7 @@ output = stable_diffusion.txt_to_img(
       progress_callback=callback,
       # seed=1337, # Uncomment to set a specific seed
 )
-output[0].save("output.png") # Image returned as list of PIL Images
+output[0].save("output.png") # Output returned as list of PIL Images
 ```
 
 #### With LoRA (Stable Diffusion)
@@ -256,8 +256,8 @@ LoRAs can be used with FLUX models in the same way as Stable Diffusion models ([
 
 Note that:
 
-- It is recommended to use LoRA with naming formats compatible with ComfyUI.
-- Only the Flux-dev q8_0 will work with LoRAs.
+- It is recommended you use LoRAs with naming formats compatible with ComfyUI.
+- LoRAs will only work with Flux-dev q8_0.
 - You can download FLUX LoRA models from https://huggingface.co/XLabs-AI/flux-lora-collection/tree/main (you must use a comfy converted version!!!).
 
 ### SD3.5 Image Generation
@@ -287,9 +287,79 @@ output = stable_diffusion.txt_to_img(
 )
 ```
 
+### Image to Image
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+INPUT_IMAGE = "../input.png"
+# INPUT_IMAGE = Image.open("../input.png") # or alternatively, pass as PIL Image
+
+stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.safetensors")
+
+output = stable_diffusion.img_to_img(
+      prompt="blue eyes",
+      image=INPUT_IMAGE,
+      strength=0.4,
+)
+```
+
+### PhotoMaker
+
+You can use [PhotoMaker](https://github.com/TencentARC/PhotoMaker) to personalize generated images with your own ID.
+
+**NOTE**, currently PhotoMaker **ONLY** works with **SDXL** (any SDXL model files will work).
+The VAE in SDXL encounters NaN issues. You can find a fixed VAE here: [SDXL VAE FP16 Fix](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/sdxl_vae.safetensors).
+
+Download PhotoMaker model file (in safetensor format) [here](https://huggingface.co/bssrdf/PhotoMaker). The official release of the model file (in .bin format) does not work with `stablediffusion.cpp`.
+
+In prompt, make sure you have a class word followed by the trigger word `"img"` (hard-coded for now). The class word could be one of `"man, woman, girl, boy"`. If input ID images contain asian faces, add `Asian` before the class word.
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      model_path="../models/sdxl.vae.safetensors",
+      vae_path="../models/sdxl.vae.safetensors",
+      stacked_id_embed_dir="../models/photomaker-v1.safetensors",
+      # keep_vae_on_cpu=True,  # If on low memory GPUs (<= 8GB), setting this to True is recommended to get artifact free images
+)
+
+output = stable_diffusion.txt_to_img(
+      cfg_scale=5.0, # a cfg_scale of 5.0 is recommended for PhotoMaker
+      height=1024,
+      width=1024,
+      style_strength=10,  # (0-100)% Default is 20 and 10-20 typically gets good results. Lower ratio means more faithfully following input ID (not necessarily better quality).
+      sample_method="euler",
+      prompt="a man img, retro futurism, retro game art style but extremely beautiful, intricate details, masterpiece, best quality, space-themed, cosmic, celestial, stars, galaxies, nebulas, planets, science fiction, highly detailed",
+      negative_prompt="realistic, photo-realistic, worst quality, greyscale, bad anatomy, bad hands, error, text",
+      input_id_images_path="../assets/newton_man",
+)
+```
+
+### PhotoMaker Version 2
+
+[PhotoMaker Version 2 (PMV2)](https://github.com/TencentARC/PhotoMaker/blob/main/README_pmv2.md) has some key improvements. Unfortunately it has a very heavy dependency which makes running it a bit involved in `SD.cpp`.
+
+Running PMV2 Requires running a python script `face_detect.py` (found [here](https://github.com/leejet/stable-diffusion.cpp/blob/master/face_detect.py)) to obtain **id_embeds** for the given input images.
+
+```
+python face_detect.py <input_image_dir>
+```
+
+An `id_embeds.safetensors` file will be generated in `input_images_dir`.
+
+**Note: this step is only needed to run once; the same `id_embeds` can be reused**
+
+- Run the same command as in version 1 but replacing `photomaker-v1.safetensors` with `photomaker-v2.safetensors`.
+
+  You can download `photomaker-v2.safetensors` from [here](https://huggingface.co/bssrdf/PhotoMakerV2).
+
+- All the other parameters from Version 1 remain the same for Version 2.
+
 ### Other High-level API Examples
 
-Other examples for the high-level API (such as image to image, upscaling and model conversion) can be found in the [tests](tests) directory.
+Other examples for the high-level API (such as upscaling and model conversion) can be found in the [tests](tests) directory.
 
 ## Low-level API
 
@@ -339,14 +409,6 @@ pip install -e .
 ```
 
 Now you can make changes to the code within the `stable_diffusion_cpp` directory and test them in your python environment.
-
-### Cleanup
-
-To clear the cache.
-
-```bash
-make clean
-```
 
 ## References
 

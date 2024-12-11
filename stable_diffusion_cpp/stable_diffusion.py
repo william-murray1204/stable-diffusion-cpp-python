@@ -1,18 +1,16 @@
-from typing import List, Dict, Optional, Union, Callable
-import random
 import ctypes
-import multiprocessing
+import random
 import contextlib
+import multiprocessing
+from typing import Dict, List, Union, Callable, Optional
 
 from PIL import Image
 
 import stable_diffusion_cpp as sd_cpp
-from stable_diffusion_cpp import GGMLType, RNGType, Schedule, SampleMethod
-
-
-from ._internals import _StableDiffusionModel, _UpscalerModel
-from ._logger import set_verbose, log_event
 from ._utils import suppress_stdout_stderr
+from ._logger import log_event, set_verbose
+from ._internals import _UpscalerModel, _StableDiffusionModel
+from stable_diffusion_cpp import RNGType, GGMLType, Schedule, SampleMethod
 
 
 class StableDiffusion:
@@ -41,6 +39,7 @@ class StableDiffusion:
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
+        diffusion_flash_attn: bool = False,
         verbose: bool = True,
     ):
         """Load a stable-diffusion.cpp model from `model_path`.
@@ -76,6 +75,7 @@ class StableDiffusion:
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_cpu: Keep controlnet in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
+            diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly).
             verbose: Print verbose output to stderr.
 
         Raises:
@@ -105,6 +105,7 @@ class StableDiffusion:
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
+        self.diffusion_flash_attn = diffusion_flash_attn
         self._stack = contextlib.ExitStack()
 
         # Default to half the number of CPUs
@@ -116,7 +117,7 @@ class StableDiffusion:
         self.verbose = verbose
         set_verbose(verbose)
 
-        # =========== Validate string and int inputs ===========
+        # =========== Validate Inputs ===========
 
         self.wtype = validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
         self.rng_type = validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
@@ -147,6 +148,7 @@ class StableDiffusion:
                     self.keep_clip_on_cpu,
                     self.keep_control_net_cpu,
                     self.keep_vae_on_cpu,
+                    self.diffusion_flash_attn,
                     self.verbose,
                 )
             )
@@ -159,7 +161,6 @@ class StableDiffusion:
                 _UpscalerModel(
                     upscaler_path,
                     self.n_threads,
-                    self.wtype,
                     self.verbose,
                 )
             )
@@ -197,6 +198,10 @@ class StableDiffusion:
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        skip_layers: List[int] = [7, 8, 9],
+        slg_scale: float = 0.0,
+        skip_layer_start: float = 0.01,
+        skip_layer_end: float = 0.2,
         canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
@@ -220,6 +225,10 @@ class StableDiffusion:
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
+            skip_layers: Layers to skip for SLG steps (default: [7,8,9]).
+            slg_scale: Skip layer guidance (SLG) scale, only for DiT models (default: 0).
+            skip_layer_start: SLG enabling point (default: 0.01).
+            skip_layer_end: SLG disabling point (default: 0.2).
             canny: Apply canny edge detection preprocessor to the control_cond image.
             upscale_factor: The image upscaling factor.
             progress_callback: Callback function to call on each step end.
@@ -259,9 +268,14 @@ class StableDiffusion:
 
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
-        # ==================== Convert the control condition to a C sd_image_t ====================
+        # ==================== Format Inputs ====================
 
+        # Convert the control condition to a C sd_image_t
         control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
+
+        # Convert skip_layers to a ctypes array
+        skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
+        skip_layers_count = len(skip_layers)
 
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
@@ -283,6 +297,11 @@ class StableDiffusion:
                 style_strength,
                 normalize_input,
                 input_id_images_path.encode("utf-8"),
+                skip_layers_array,
+                skip_layers_count,
+                slg_scale,
+                skip_layer_start,
+                skip_layer_end,
             )
 
         # Convert the C array of images to a Python list of images
@@ -312,6 +331,10 @@ class StableDiffusion:
         style_strength: float = 20.0,
         normalize_input: bool = False,
         input_id_images_path: str = "",
+        skip_layers: List[int] = [7, 8, 9],
+        slg_scale: float = 0.0,
+        skip_layer_start: float = 0.01,
+        skip_layer_end: float = 0.2,
         canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
@@ -337,6 +360,10 @@ class StableDiffusion:
             style_strength: Strength for keeping input identity (default: 20%).
             normalize_input: Normalize PHOTOMAKER input id images.
             input_id_images_path: Path to PHOTOMAKER input id images dir.
+            skip_layers: Layers to skip for SLG steps (default: [7,8,9]).
+            slg_scale: Skip layer guidance (SLG) scale, only for DiT models (default: 0).
+            skip_layer_start: SLG enabling point (default: 0.01).
+            skip_layer_end: SLG disabling point (default: 0.2).
             canny: Apply canny edge detection preprocessor to the control_cond image.
             upscale_factor: The image upscaling factor.
             progress_callback: Callback function to call on each step end.
@@ -346,7 +373,7 @@ class StableDiffusion:
 
         if self.model is None:
             raise Exception("Stable diffusion model not loaded.")
-        
+
         if self.vae_decode_only == True:
             raise Exception("Cannot run img_to_img with vae_decode_only set to True.")
 
@@ -379,17 +406,20 @@ class StableDiffusion:
 
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
-        # ==================== Convert the control condition to a C sd_image_t ====================
+        # ==================== Format Inputs ====================
 
+        # Convert the control condition to a C sd_image_t
         control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
 
-        # ==================== Resize the input image ====================
-
+        # Resize the input image
         image = self._resize_image(image, width, height)  # Input image and generated image must have the same size
 
-        # ==================== Convert the image to a byte array ====================
-
+        # Convert the image to a byte array
         image_pointer = self._image_to_sd_image_t_p(image)
+
+        # Convert skip_layers to a ctypes array
+        skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
+        skip_layers_count = len(skip_layers)
 
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
@@ -413,6 +443,11 @@ class StableDiffusion:
                 style_strength,
                 normalize_input,
                 input_id_images_path.encode("utf-8"),
+                skip_layers_array,
+                skip_layers_count,
+                slg_scale,
+                skip_layer_start,
+                skip_layer_end,
             )
         return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
@@ -458,14 +493,14 @@ class StableDiffusion:
         Returns:
             A list of Pillow Images."""
 
-        raise NotImplementedError("Not yet implemented.")
+        # WARNING - Image to Video functionality does not work and must first be implemented in the C++ code.
+        raise NotImplementedError("SVD support is broken, do not use it.")
 
         # if self.model is None:
         #     raise Exception("Stable diffusion model not loaded.")
 
         # if self.vae_decode_only == True:
         #     raise Exception("Cannot run img_to_vid with vae_decode_only set to True.")
-
 
         # # =========== Validate string and int inputs ===========
 
@@ -496,14 +531,14 @@ class StableDiffusion:
 
         #     sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
-        # # ==================== Resize the input image ====================
+        # # ==================== Format Inputs ====================
 
+        # # Resize the input image
         # image = self._resize_image(
         #     image, width, height
         # )  # Input image and generated image must have the same size
 
-        # # ==================== Convert the image to a byte array ====================
-
+        # # Convert the image to a byte array
         # image_pointer = self._image_to_sd_image_t_p(image)
 
         # with suppress_stdout_stderr(disable=self.verbose):
@@ -877,6 +912,7 @@ SAMPLE_METHOD_MAP = {
     "ipndm": SampleMethod.IPNDM,
     "ipndm_v": SampleMethod.IPNDM_V,
     "lcm": SampleMethod.LCM,
+    "n_sample_methods": SampleMethod.N_SAMPLE_METHODS,
 }
 
 SCHEDULE_MAP = {
@@ -886,6 +922,7 @@ SCHEDULE_MAP = {
     "exponential": Schedule.EXPONENTIAL,
     "ays": Schedule.AYS,
     "gits": Schedule.GITS,
+    "n_schedules": Schedule.N_SCHEDULES,
 }
 
 GGML_TYPE_MAP = {
@@ -922,6 +959,8 @@ GGML_TYPE_MAP = {
     "q4_0_4_4": GGMLType.SD_TYPE_Q4_0_4_4,
     "q4_0_4_8": GGMLType.SD_TYPE_Q4_0_4_8,
     "q4_0_8_8": GGMLType.SD_TYPE_Q4_0_8_8,
+    "tq1_0": GGMLType.SD_TYPE_TQ1_0,
+    "tq2_0": GGMLType.SD_TYPE_TQ2_0,
     # Default
     "default": GGMLType.SD_TYPE_COUNT,
 }

@@ -8,16 +8,9 @@ dynamic = ["version"]
 description = "Python bindings for the stable-diffusion.cpp library"
 readme = "README.md"
 license = { text = "MIT" }
-authors = [
-    { name = "William Murray" },
-]
-maintainers = [
-    { name = "William Murray" },
-]
-dependencies = [
-    "typing-extensions>=4.5.0",
-    "pillow>=10.2.0",
-]
+authors = [{ name = "William Murray" }]
+maintainers = [{ name = "William Murray" }]
+dependencies = ["typing-extensions>=4.5.0", "pillow>=10.2.0"]
 keywords = [
     "diffusion",
     "stable-diffusion",
@@ -54,3 +47,9 @@ Documentation = "https://github.com/william-murray1204/stable-diffusion-cpp-pyth
 
 [tool.black]
 line-length = 130
+
+[tool.isort]
+profile = "black"
+known_local_folder = ["stable_diffusion_cpp"]
+remove_redundant_aliases = true
+length_sort = true

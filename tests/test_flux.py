@@ -1,5 +1,6 @@
 import os
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
 DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-schnell-q3_k.gguf"

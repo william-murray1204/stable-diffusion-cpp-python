@@ -1,4 +1,7 @@
+# isort: off
 from .stable_diffusion_cpp import *
 from .stable_diffusion import *
 
-__version__ = "0.2.1"
+# isort: on
+
+__version__ = "0.2.2"

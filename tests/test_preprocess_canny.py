@@ -1,5 +1,6 @@
 import os
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
 INPUT_IMAGE_PATH = "assets\\input.png"

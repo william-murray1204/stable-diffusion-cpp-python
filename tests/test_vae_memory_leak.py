@@ -1,6 +1,7 @@
 import os
 import time
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "C:\\stable-diffusion\\juggernautXL_V8+RDiffusion.safetensors"
