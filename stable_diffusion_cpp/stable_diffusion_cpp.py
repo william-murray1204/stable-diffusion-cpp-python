@@ -253,6 +253,8 @@ class GGMLType(IntEnum):
     SD_TYPE_F16 = 1
     SD_TYPE_Q4_0 = 2
     SD_TYPE_Q4_1 = 3
+    # SD_TYPE_Q4_2 = 4 support has been removed
+    # SD_TYPE_Q4_3 = 5 support has been removed
     SD_TYPE_Q5_0 = 6
     SD_TYPE_Q5_1 = 7
     SD_TYPE_Q8_0 = 8
@@ -444,12 +446,13 @@ def txt2img(
 # ------------ img2img ------------
 
 
-# SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx, sd_image_t init_image, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, int width, int height, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
+# SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx, sd_image_t init_image, sd_image_t mask_image, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, int width, int height, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
 @ctypes_function(
     "img2img",
     [
         sd_ctx_t_p_ctypes,  # sd_ctx
         sd_image_t,  # init_image
+        sd_image_t, # mask_image
         ctypes.c_char_p,  # prompt
         ctypes.c_char_p,  # negative_prompt
         ctypes.c_int,  # clip_skip
@@ -478,6 +481,7 @@ def txt2img(
 def img2img(
     sd_ctx: sd_ctx_t_p,
     init_image: sd_image_t,
+    mask_image: sd_image_t,
     prompt: bytes,
     negative_prompt: bytes,
     clip_skip: int,

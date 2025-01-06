@@ -33,9 +33,9 @@ class StableDiffusion:
         vae_decode_only: bool = False,
         vae_tiling: bool = False,
         n_threads: int = -1,
-        wtype: Union[str, GGMLType, int, float, None] = "default",
-        rng_type: Union[str, RNGType, int, float, None] = "cuda",
-        schedule: Union[str, Schedule, int, float, None] = "default",
+        wtype: Optional[Union[str, GGMLType, int, float]] = "default",
+        rng_type: Optional[Union[str, RNGType, int, float]] = "cuda",
+        schedule: Optional[Union[str, Schedule, int, float]] = "default",
         keep_clip_on_cpu: bool = False,
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
@@ -189,7 +189,7 @@ class StableDiffusion:
         guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
+        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         seed: int = 42,
         batch_count: int = 1,
@@ -315,13 +315,14 @@ class StableDiffusion:
         self,
         image: Union[Image.Image, str],
         prompt: str,
+        mask_image: Optional[Union[Image.Image, str]] = None,
         negative_prompt: str = "",
         clip_skip: int = -1,
         cfg_scale: float = 7.0,
         guidance: float = 3.5,
         width: int = 512,
         height: int = 512,
-        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
+        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -344,6 +345,7 @@ class StableDiffusion:
         Args:
             image: The input image path or Pillow Image to direct the generation.
             prompt: The prompt to render.
+            mask_image: The inpainting mask image path or Pillow Image.
             negative_prompt: The negative prompt.
             clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
             cfg_scale: Unconditional guidance scale.
@@ -414,8 +416,25 @@ class StableDiffusion:
         # Resize the input image
         image = self._resize_image(image, width, height)  # Input image and generated image must have the same size
 
-        # Convert the image to a byte array
+        def _create_blank_mask_image(width: int, height: int):
+            """Create a blank white mask image in c_unit8 format."""
+            mask_image_buffer = (ctypes.c_uint8 * (width * height))(*[255] * (width * height))
+            return mask_image_buffer
+
+        # Convert the image and mask image to a byte array
         image_pointer = self._image_to_sd_image_t_p(image)
+        if mask_image:
+            # Resize the mask image (however the mask should ideally already be the same size as the input image)
+            mask_image = self._resize_image(mask_image, width, height)
+            mask_image_pointer = self._image_to_sd_image_t_p(mask_image, channel=1)
+        else:
+            # Create a blank white mask image
+            mask_image_pointer = self._c_uint8_to_sd_image_t_p(
+                image=_create_blank_mask_image(width, height),
+                width=width,
+                height=height,
+                channel=1,
+            )
 
         # Convert skip_layers to a ctypes array
         skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
@@ -426,6 +445,7 @@ class StableDiffusion:
             c_images = sd_cpp.img2img(
                 self.model,
                 image_pointer,
+                mask_image_pointer,
                 prompt.encode("utf-8"),
                 negative_prompt.encode("utf-8"),
                 clip_skip,
@@ -466,7 +486,7 @@ class StableDiffusion:
         augmentation_level: float = 0.0,
         min_cfg: float = 1.0,
         cfg_scale: float = 7.0,
-        sample_method: Union[str, SampleMethod, int, float, None] = "euler_a",
+        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
         sample_steps: int = 20,
         strength: float = 0.75,
         seed: int = 42,
@@ -661,7 +681,6 @@ class StableDiffusion:
         # ==================== Upscale images ====================
 
         upscaled_images = []
-
         for image in images:
 
             # Convert the image to a byte array
@@ -698,19 +717,24 @@ class StableDiffusion:
     def _format_image(
         self,
         image: Union[Image.Image, str],
+        channel: int = 3,
     ) -> Image.Image:
-        """Convert an image path or Pillow Image to a Pillow Image of RGBA format."""
+        """Convert an image path or Pillow Image to a Pillow Image of RGBA or grayscale (inpainting masks) format."""
         # Convert image path to image if str
         if isinstance(image, str):
             image = Image.open(image)
 
-        # Convert any non RGBA to RGBA
-        if image.format != "PNG":
-            image = image.convert("RGBA")
+        if channel == 1:
+            # Grayscale the image if channel is 1
+            image = image.convert("L")
+        else:
+            # Convert any non RGBA to RGBA
+            if image.format != "PNG":
+                image = image.convert("RGBA")
 
-        # Ensure the image is in RGB mode
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+            # Ensure the image is in RGB mode
+            if image.mode != "RGB":
+                image = image.convert("RGB")
 
         return image, image.width, image.height
 
@@ -741,14 +765,12 @@ class StableDiffusion:
 
     # ============= Image to C uint8 pointer =============
 
-    def _cast_image(self, image: Union[Image.Image, str]):
+    def _cast_image(self, image: Union[Image.Image, str], channel: int = 3):
         """Cast a PIL Image to a C uint8 pointer."""
-
-        image, width, height = self._format_image(image)
+        image, width, height = self._format_image(image, channel)
 
         # Convert the PIL Image to a byte array
         image_bytes = image.tobytes()
-
         data = ctypes.cast(
             (ctypes.c_byte * len(image_bytes))(*image_bytes),
             ctypes.POINTER(ctypes.c_uint8),
@@ -757,8 +779,8 @@ class StableDiffusion:
 
     # ============= Image to C sd_image_t =============
 
-    def _c_uint8_to_sd_image_t_p(self, image: ctypes.c_uint8, width, height, channel: int = 3):
-        # Create a new C sd_image_t
+    def _c_uint8_to_sd_image_t_p(self, image: ctypes.c_uint8, width: int, height: int, channel: int = 3) -> sd_cpp.sd_image_t:
+        """Convert a C uint8 pointer to a C sd_image_t."""
         c_image = sd_cpp.sd_image_t(
             width=width,
             height=height,
@@ -767,21 +789,18 @@ class StableDiffusion:
         )
         return c_image
 
-    def _image_to_sd_image_t_p(self, image: Union[Image.Image, str]):
+    def _image_to_sd_image_t_p(self, image: Union[Image.Image, str], channel: int = 3) -> sd_cpp.sd_image_t:
         """Convert a PIL Image or image path to a C sd_image_t."""
-
-        data, width, height = self._cast_image(image)
-
-        # Create a new C sd_image_t
-        c_image = self._c_uint8_to_sd_image_t_p(data, width, height)
+        data, width, height = self._cast_image(image, channel)
+        c_image = self._c_uint8_to_sd_image_t_p(data, width, height, channel)
         return c_image
 
     # ============= C sd_image_t to Image =============
 
-    def _c_array_to_bytes(self, c_array, buffer_size: int):
+    def _c_array_to_bytes(self, c_array, buffer_size: int) -> bytes:
         return bytearray(ctypes.cast(c_array, ctypes.POINTER(ctypes.c_byte * buffer_size)).contents)
 
-    def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t):
+    def _dereference_sd_image_t_p(self, c_image: sd_cpp.sd_image_t) -> Dict:
         """Dereference a C sd_image_t pointer to a Python dictionary with height, width, channel and data (bytes)."""
 
         # Calculate the size of the data buffer
@@ -795,7 +814,7 @@ class StableDiffusion:
         }
         return image
 
-    def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
+    def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int) -> List[Dict]:
         """Slice a C array of images."""
         image_array = ctypes.cast(c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)).contents
 
@@ -821,7 +840,7 @@ class StableDiffusion:
         # Return the list of images
         return images
 
-    def _sd_image_t_p_to_images(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int):
+    def _sd_image_t_p_to_images(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int) -> List[Image.Image]:
         """Convert C sd_image_t_p images to a Python list of images."""
 
         # Convert C array to Python list of images
@@ -836,20 +855,30 @@ class StableDiffusion:
 
     # ============= Bytes to Image =============
 
-    def _bytes_to_image(self, byte_data: bytes, width: int, height: int):
+    def _bytes_to_image(self, byte_data: bytes, width: int, height: int, channel: int = 3) -> Image.Image:
         """Convert a byte array to a PIL Image."""
+        # Initialize the image with RGBA mode
         image = Image.new("RGBA", (width, height))
 
         for y in range(height):
             for x in range(width):
-                idx = (y * width + x) * 3
-                image.putpixel(
-                    (x, y),
-                    (byte_data[idx], byte_data[idx + 1], byte_data[idx + 2], 255),
-                )
+                idx = (y * width + x) * channel
+                # Dynamically create the color tuple
+                color = tuple(byte_data[idx + i] if idx + i < len(byte_data) else 0 for i in range(channel))
+                if channel == 1:  # Grayscale
+                    color = (color[0],) * 3 + (255,)  # Convert to (R, G, B, A)
+                elif channel == 3:  # RGB
+                    color = color + (255,)  # Add alpha channel
+                elif channel == 4:  # RGBA
+                    pass  # Use color as is
+                else:
+                    raise ValueError(f"Unsupported channel value: {channel}")
+                # Set the pixel
+                image.putpixel((x, y), color)
+
         return image
 
-    def __setstate__(self, state):
+    def __setstate__(self, state) -> None:
         self.__init__(**state)
 
     def close(self) -> None:
@@ -865,7 +894,7 @@ class StableDiffusion:
 # ============================================
 
 
-def validate_dimensions(dimension: int | float, attribute_name: str) -> int:
+def validate_dimensions(dimension: Union[int, float], attribute_name: str) -> int:
     """Dimensions must be a multiple of 64 otherwise a GGML_ASSERT error is encountered."""
     dimension = int(dimension)
     if dimension <= 0 or dimension % 64 != 0:

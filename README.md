@@ -42,12 +42,12 @@ All `stable-diffusion.cpp` cmake build options can be set via the `CMAKE_ARGS` e
 
 ```bash
 # Linux and Mac
-CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUDA=ON" pip install stable-diffusion-cpp-python
 ```
 
 ```powershell
 # Windows
-$env:CMAKE_ARGS="-DSD_CUBLAS=ON"
+$env:CMAKE_ARGS="-DSD_CUDA=ON"
 pip install stable-diffusion-cpp-python
 ```
 
@@ -60,13 +60,13 @@ They can also be set via `pip install -C / --config-settings` command and saved 
 
 ```bash
 pip install --upgrade pip # ensure pip is up to date
-pip install stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
+pip install stable-diffusion-cpp-python -C cmake.args="-DSD_CUDA=ON"
 ```
 
 ```txt
 # requirements.txt
 
-stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
+stable-diffusion-cpp-python -C cmake.args="-DSD_CUDA=ON"
 ```
 
 </details>
@@ -75,16 +75,16 @@ stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 
 Below are some common backends, their build commands and any additional environment variables required.
 
-<!-- CUBLAS -->
+<!-- CUDA -->
 <details>
-<summary>Using CUBLAS (CUDA)</summary>
+<summary>Using CUDA (CUBLAS)</summary>
 
 This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure you have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). You can check your installed CUDA toolkit version by running `nvcc --version`.
 
 - It is recommended you have at least 4 GB of VRAM.
 
 ```bash
-CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUDA=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -148,7 +148,7 @@ CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DGGML
 <details>
 <summary>Using Flash Attention</summary>
 
-Enabling flash attention reduces memory usage by at least 400 MB. At the moment, it is not supported when CUBLAS is enabled because the kernel implementation is missing.
+Enabling flash attention reduces memory usage by at least 400 MB. At the moment, it is not supported when CUDA (CUBLAS) is enabled because the kernel implementation is missing.
 
 ```bash
 CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
@@ -162,6 +162,19 @@ CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
 
 ```bash
 CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- MUSA -->
+
+<details>
+<summary>Using MUSA</summary>
+
+This provides BLAS acceleration using the MUSA cores of your Moore Threads GPU. Make sure to have the MUSA toolkit installed.
+
+```bash
+CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/local/musa/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/musa/bin/clang++ -DSD_MUSA=ON -DCMAKE_BUILD_TYPE=Release" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -299,7 +312,23 @@ stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.saf
 
 output = stable_diffusion.img_to_img(
       prompt="blue eyes",
-      image=INPUT_IMAGE,
+      image=INPUT_IMAGE, # Note: The input image will be automatically resized to the match the width and height arguments (default: 512x512)
+      strength=0.4,
+)
+```
+
+### Inpainting
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+# Note: Inpainting with a base model gives poor results. A model fine-tuned for inpainting is recommended.
+stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.safetensors")
+
+output = stable_diffusion.img_to_img(
+      prompt="blue eyes",
+      image="../input.png",
+      mask_image="../mask.png", # A grayscale image where 0 is masked and 255 is unmasked
       strength=0.4,
 )
 ```
