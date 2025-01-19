@@ -1,5 +1,6 @@
 import os
 import traceback
+
 import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 
 MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"

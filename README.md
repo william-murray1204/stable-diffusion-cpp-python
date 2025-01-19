@@ -42,12 +42,12 @@ All `stable-diffusion.cpp` cmake build options can be set via the `CMAKE_ARGS` e
 
 ```bash
 # Linux and Mac
-CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUDA=ON" pip install stable-diffusion-cpp-python
 ```
 
 ```powershell
 # Windows
-$env:CMAKE_ARGS="-DSD_CUBLAS=ON"
+$env:CMAKE_ARGS="-DSD_CUDA=ON"
 pip install stable-diffusion-cpp-python
 ```
 
@@ -60,13 +60,13 @@ They can also be set via `pip install -C / --config-settings` command and saved 
 
 ```bash
 pip install --upgrade pip # ensure pip is up to date
-pip install stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
+pip install stable-diffusion-cpp-python -C cmake.args="-DSD_CUDA=ON"
 ```
 
 ```txt
 # requirements.txt
 
-stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
+stable-diffusion-cpp-python -C cmake.args="-DSD_CUDA=ON"
 ```
 
 </details>
@@ -75,16 +75,16 @@ stable-diffusion-cpp-python -C cmake.args="-DSD_CUBLAS=ON"
 
 Below are some common backends, their build commands and any additional environment variables required.
 
-<!-- CUBLAS -->
+<!-- CUDA -->
 <details>
-<summary>Using CUBLAS (CUDA)</summary>
+<summary>Using CUDA (CUBLAS)</summary>
 
 This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure you have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). You can check your installed CUDA toolkit version by running `nvcc --version`.
 
 - It is recommended you have at least 4 GB of VRAM.
 
 ```bash
-CMAKE_ARGS="-DSD_CUBLAS=ON" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-DSD_CUDA=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -148,7 +148,7 @@ CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DGGML
 <details>
 <summary>Using Flash Attention</summary>
 
-Enabling flash attention reduces memory usage by at least 400 MB. At the moment, it is not supported when CUBLAS is enabled because the kernel implementation is missing.
+Enabling flash attention reduces memory usage by at least 400 MB. At the moment, it is not supported when CUDA (CUBLAS) is enabled because the kernel implementation is missing.
 
 ```bash
 CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
@@ -162,6 +162,19 @@ CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
 
 ```bash
 CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
+```
+
+</details>
+
+<!-- MUSA -->
+
+<details>
+<summary>Using MUSA</summary>
+
+This provides BLAS acceleration using the MUSA cores of your Moore Threads GPU. Make sure to have the MUSA toolkit installed.
+
+```bash
+CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/local/musa/bin/clang -DCMAKE_CXX_COMPILER=/usr/local/musa/bin/clang++ -DSD_MUSA=ON -DCMAKE_BUILD_TYPE=Release" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -186,16 +199,16 @@ def callback(step: int, steps: int, time: float):
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      wtype="default", # Weight type (default: automatically determines weight type of model file)
+      # wtype="default", # Weight type (e.g. "q8_0", "f16", etc) (The "default" setting is automatically applied and determines the weight type of a model file)
 )
 output = stable_diffusion.txt_to_img(
       prompt="a lovely cat",
       width=512, # Must be a multiple of 64
       height=512, # Must be a multiple of 64
       progress_callback=callback,
-      # seed=1337, # Uncomment to set a specific seed
+      # seed=1337, # Uncomment to set a specific seed (use -1 for a random seed)
 )
-output[0].save("output.png") # Image returned as list of PIL Images
+output[0].save("output.png") # Output returned as list of PIL Images
 ```
 
 #### With LoRA (Stable Diffusion)
@@ -240,6 +253,7 @@ stable_diffusion = StableDiffusion(
     clip_l_path="../models/clip_l.safetensors",
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
+    vae_decode_only=True, # Can be True if we dont use img_to_img
 )
 output = stable_diffusion.txt_to_img(
       prompt="a lovely cat holding a sign says 'flux.cpp'",
@@ -255,8 +269,8 @@ LoRAs can be used with FLUX models in the same way as Stable Diffusion models ([
 
 Note that:
 
-- It is recommended to use LoRA with naming formats compatible with ComfyUI.
-- Only the Flux-dev q8_0 will work with LoRAs.
+- It is recommended you use LoRAs with naming formats compatible with ComfyUI.
+- LoRAs will only work with Flux-dev q8_0.
 - You can download FLUX LoRA models from https://huggingface.co/XLabs-AI/flux-lora-collection/tree/main (you must use a comfy converted version!!!).
 
 ### SD3.5 Image Generation
@@ -286,9 +300,108 @@ output = stable_diffusion.txt_to_img(
 )
 ```
 
+### Image to Image
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+INPUT_IMAGE = "../input.png"
+# INPUT_IMAGE = Image.open("../input.png") # or alternatively, pass as PIL Image
+
+stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.safetensors")
+
+output = stable_diffusion.img_to_img(
+      prompt="blue eyes",
+      image=INPUT_IMAGE, # Note: The input image will be automatically resized to the match the width and height arguments (default: 512x512)
+      strength=0.4,
+)
+```
+
+### Inpainting
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+# Note: Inpainting with a base model gives poor results. A model fine-tuned for inpainting is recommended.
+stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.safetensors")
+
+output = stable_diffusion.img_to_img(
+      prompt="blue eyes",
+      image="../input.png",
+      mask_image="../mask.png", # A grayscale image where 0 is masked and 255 is unmasked
+      strength=0.4,
+)
+```
+
+### PhotoMaker
+
+You can use [PhotoMaker](https://github.com/TencentARC/PhotoMaker) to personalize generated images with your own ID.
+
+**NOTE**, currently PhotoMaker **ONLY** works with **SDXL** (any SDXL model files will work).
+The VAE in SDXL encounters NaN issues. You can find a fixed VAE here: [SDXL VAE FP16 Fix](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/sdxl_vae.safetensors).
+
+Download PhotoMaker model file (in safetensor format) [here](https://huggingface.co/bssrdf/PhotoMaker). The official release of the model file (in .bin format) does not work with `stablediffusion.cpp`.
+
+In prompt, make sure you have a class word followed by the trigger word `"img"` (hard-coded for now). The class word could be one of `"man, woman, girl, boy"`. If input ID images contain asian faces, add `Asian` before the class word.
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      model_path="../models/sdxl.vae.safetensors",
+      vae_path="../models/sdxl.vae.safetensors",
+      stacked_id_embed_dir="../models/photomaker-v1.safetensors",
+      # keep_vae_on_cpu=True,  # If on low memory GPUs (<= 8GB), setting this to True is recommended to get artifact free images
+)
+
+output = stable_diffusion.txt_to_img(
+      cfg_scale=5.0, # a cfg_scale of 5.0 is recommended for PhotoMaker
+      height=1024,
+      width=1024,
+      style_strength=10,  # (0-100)% Default is 20 and 10-20 typically gets good results. Lower ratio means more faithfully following input ID (not necessarily better quality).
+      sample_method="euler",
+      prompt="a man img, retro futurism, retro game art style but extremely beautiful, intricate details, masterpiece, best quality, space-themed, cosmic, celestial, stars, galaxies, nebulas, planets, science fiction, highly detailed",
+      negative_prompt="realistic, photo-realistic, worst quality, greyscale, bad anatomy, bad hands, error, text",
+      input_id_images_path="../assets/newton_man",
+)
+```
+
+### PhotoMaker Version 2
+
+[PhotoMaker Version 2 (PMV2)](https://github.com/TencentARC/PhotoMaker/blob/main/README_pmv2.md) has some key improvements. Unfortunately it has a very heavy dependency which makes running it a bit involved in `SD.cpp`.
+
+Running PMV2 Requires running a python script `face_detect.py` (found [here](https://github.com/leejet/stable-diffusion.cpp/blob/master/face_detect.py)) to obtain **id_embeds** for the given input images.
+
+```
+python face_detect.py <input_image_dir>
+```
+
+An `id_embeds.safetensors` file will be generated in `input_images_dir`.
+
+**Note: this step is only needed to run once; the same `id_embeds` can be reused**
+
+- Run the same command as in version 1 but replacing `photomaker-v1.safetensors` with `photomaker-v2.safetensors`.
+
+  You can download `photomaker-v2.safetensors` from [here](https://huggingface.co/bssrdf/PhotoMakerV2).
+
+- All the other parameters from Version 1 remain the same for Version 2.
+
+### Listing GGML model and RNG types, schedulers and sample methods
+
+Access the GGML model and RNG types, schedulers, and sample methods via the following maps:
+
+```python
+from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULE_MAP, SAMPLE_METHOD_MAP
+
+print("GGML model types:", list(GGML_TYPE_MAP))
+print("RNG types:", list(RNG_TYPE_MAP))
+print("Schedulers:", list(SCHEDULE_MAP))
+print("Sample methods:", list(SAMPLE_METHOD_MAP))
+```
+
 ### Other High-level API Examples
 
-Other examples for the high-level API (such as image to image, upscaling and model conversion) can be found in the [tests](tests) directory.
+Other examples for the high-level API (such as upscaling and model conversion) can be found in the [tests](tests) directory.
 
 ## Low-level API
 
@@ -338,14 +451,6 @@ pip install -e .
 ```
 
 Now you can make changes to the code within the `stable_diffusion_cpp` directory and test them in your python environment.
-
-### Cleanup
-
-To clear the cache.
-
-```bash
-make clean
-```
 
 ## References
 

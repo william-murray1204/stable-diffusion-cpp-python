@@ -1,6 +1,7 @@
 import os
 import time
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "C:\\stable-diffusion\\juggernautXL_V8+RDiffusion.safetensors"
@@ -13,7 +14,6 @@ stable_diffusion = StableDiffusion(
     model_path=MODEL_PATH,
     # upscaler_path="C:\\stable-diffusion\\RealESRGAN_x4plus.pth",
     # vae_path=VAE_PATH,
-    # free_params_immediately=True,
     # vae_tiling=True,
     # keep_vae_on_cpu=True,
     # keep_clip_on_cpu=True,

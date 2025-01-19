@@ -1,10 +1,9 @@
 import os
 from contextlib import ExitStack
 
-from ._utils import suppress_stdout_stderr
-
 import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 
+from ._utils import suppress_stdout_stderr
 
 # ============================================
 # Stable Diffusion Model
@@ -32,7 +31,6 @@ class _StableDiffusionModel:
         stacked_id_embed_dir: str,
         vae_decode_only: bool,
         vae_tiling: bool,
-        free_params_immediately: bool,
         n_threads: int,
         wtype: int,
         rng_type: int,
@@ -40,6 +38,7 @@ class _StableDiffusionModel:
         keep_clip_on_cpu: bool,
         keep_control_net_cpu: bool,
         keep_vae_on_cpu: bool,
+        diffusion_flash_attn: bool,
         verbose: bool,
     ):
         self.model_path = model_path
@@ -55,7 +54,6 @@ class _StableDiffusionModel:
         self.stacked_id_embed_dir = stacked_id_embed_dir
         self.vae_decode_only = vae_decode_only
         self.vae_tiling = vae_tiling
-        self.free_params_immediately = free_params_immediately
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
@@ -63,6 +61,7 @@ class _StableDiffusionModel:
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
+        self.diffusion_flash_attn = diffusion_flash_attn
         self.verbose = verbose
 
         self._exit_stack = ExitStack()
@@ -98,13 +97,14 @@ class _StableDiffusionModel:
                     self.stacked_id_embed_dir.encode("utf-8"),
                     self.vae_decode_only,
                     self.vae_tiling,
-                    self.free_params_immediately,
+                    False,  # Free params immediately (unload model)
                     self.n_threads,
                     self.wtype,
                     self.rng_type,
                     self.schedule,
                     self.keep_clip_on_cpu,
                     self.keep_control_net_cpu,
+                    self.diffusion_flash_attn,
                     self.keep_vae_on_cpu,
                 )
 
@@ -144,12 +144,10 @@ class _UpscalerModel:
         self,
         upscaler_path: str,
         n_threads: int,
-        wtype: int,
         verbose: bool,
     ):
         self.upscaler_path = upscaler_path
         self.n_threads = n_threads
-        self.wtype = wtype
         self.verbose = verbose
         self._exit_stack = ExitStack()
 
@@ -165,7 +163,7 @@ class _UpscalerModel:
                 raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
 
             # Load the image upscaling model ctx
-            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads, self.wtype)
+            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads)
 
             # Check if the model was loaded successfully
             if self.upscaler is None:

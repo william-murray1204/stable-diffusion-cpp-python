@@ -1,8 +1,9 @@
 import os
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
-MODEL_PATH = "C:\\stable-diffusion\\v15PrunedEmaonly.safetensors"
+MODEL_PATH = "C:\\stable-diffusion\\v1-5-pruned-emaonly.safetensors"
 CONTROLNET_MODEL_PATH = "C:\\stable-diffusion\\control_nets\\control_openpose-fp16.safetensors"
 
 INPUT_IMAGE_PATH = "assets\\input.png"

@@ -1,5 +1,6 @@
 import os
 import traceback
+
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "C:\\stable-diffusion\\sd3.5\\sd3.5_large-q4_k_5_0.gguf"
