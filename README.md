@@ -199,14 +199,14 @@ def callback(step: int, steps: int, time: float):
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
-      wtype="default", # Weight type (default: automatically determines weight type of model file)
+      # wtype="default", # Weight type (e.g. "q8_0", "f16", etc) (The "default" setting is automatically applied and determines the weight type of a model file)
 )
 output = stable_diffusion.txt_to_img(
       prompt="a lovely cat",
       width=512, # Must be a multiple of 64
       height=512, # Must be a multiple of 64
       progress_callback=callback,
-      # seed=1337, # Uncomment to set a specific seed
+      # seed=1337, # Uncomment to set a specific seed (use -1 for a random seed)
 )
 output[0].save("output.png") # Output returned as list of PIL Images
 ```
@@ -385,6 +385,19 @@ An `id_embeds.safetensors` file will be generated in `input_images_dir`.
   You can download `photomaker-v2.safetensors` from [here](https://huggingface.co/bssrdf/PhotoMakerV2).
 
 - All the other parameters from Version 1 remain the same for Version 2.
+
+### Listing GGML model and RNG types, schedulers and sample methods
+
+Access the GGML model and RNG types, schedulers, and sample methods via the following maps:
+
+```python
+from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULE_MAP, SAMPLE_METHOD_MAP
+
+print("GGML model types:", list(GGML_TYPE_MAP))
+print("RNG types:", list(RNG_TYPE_MAP))
+print("Schedulers:", list(SCHEDULE_MAP))
+print("Sample methods:", list(SAMPLE_METHOD_MAP))
+```
 
 ### Other High-level API Examples
 
