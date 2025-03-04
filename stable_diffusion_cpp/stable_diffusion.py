@@ -187,6 +187,7 @@ class StableDiffusion:
         clip_skip: int = -1,
         cfg_scale: float = 7.0,
         guidance: float = 3.5,
+        eta: float = 0.0,
         width: int = 512,
         height: int = 512,
         sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
@@ -214,6 +215,7 @@ class StableDiffusion:
             clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
             cfg_scale: Unconditional guidance scale.
             guidance: Guidance scale.
+            eta: Eta in DDIM, only for DDIM and TCD.
             width: Image height, in pixel space.
             height: Image width, in pixel space.
             sample_method: Sampling method.
@@ -286,6 +288,7 @@ class StableDiffusion:
                 clip_skip,
                 cfg_scale,
                 guidance,
+                eta,
                 width,
                 height,
                 sample_method,
@@ -320,6 +323,7 @@ class StableDiffusion:
         clip_skip: int = -1,
         cfg_scale: float = 7.0,
         guidance: float = 3.5,
+        eta: float = 0.0,
         width: int = 512,
         height: int = 512,
         sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
@@ -350,6 +354,7 @@ class StableDiffusion:
             clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
             cfg_scale: Unconditional guidance scale.
             guidance: Guidance scale.
+            eta: Eta in DDIM, only for DDIM and TCD.
             width: Image height, in pixel space.
             height: Image width, in pixel space.
             sample_method: Sampling method.
@@ -451,6 +456,7 @@ class StableDiffusion:
                 clip_skip,
                 cfg_scale,
                 guidance,
+                eta,
                 width,
                 height,
                 sample_method,
@@ -941,6 +947,8 @@ SAMPLE_METHOD_MAP = {
     "ipndm": SampleMethod.IPNDM,
     "ipndm_v": SampleMethod.IPNDM_V,
     "lcm": SampleMethod.LCM,
+    "ddim_trailing": SampleMethod.DDIM_TRAILING,
+    "tcd": SampleMethod.TCD,
     "n_sample_methods": SampleMethod.N_SAMPLE_METHODS,
 }
 
@@ -985,11 +993,14 @@ GGML_TYPE_MAP = {
     "f64": GGMLType.SD_TYPE_F64,
     "iq1_m": GGMLType.SD_TYPE_IQ1_M,
     "bf16": GGMLType.SD_TYPE_BF16,
-    "q4_0_4_4": GGMLType.SD_TYPE_Q4_0_4_4,
-    "q4_0_4_8": GGMLType.SD_TYPE_Q4_0_4_8,
-    "q4_0_8_8": GGMLType.SD_TYPE_Q4_0_8_8,
+    # "q4_0_4_4": GGMLType.SD_TYPE_Q4_0_4_4,
+    # "q4_0_4_8": GGMLType.SD_TYPE_Q4_0_4_8,
+    # "q4_0_8_8": GGMLType.SD_TYPE_Q4_0_8_8,
     "tq1_0": GGMLType.SD_TYPE_TQ1_0,
     "tq2_0": GGMLType.SD_TYPE_TQ2_0,
+    # "iq4_nl_4_4": GGMLType.SD_TYPE_IQ4_NL_4_4,
+    # "iq4_nl_4_8": GGMLType.SD_TYPE_IQ4_NL_4_8,
+    # "iq4_nl_8_8": GGMLType.SD_TYPE_IQ4_NL_8_8,
     # Default
     "default": GGMLType.SD_TYPE_COUNT,
 }

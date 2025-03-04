@@ -4,7 +4,8 @@ import traceback
 from stable_diffusion_cpp import StableDiffusion
 
 # MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.q8_0.gguf"  # GGUF model wont work for LORAs (GGML_ASSERT error)
-MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
+# MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
+MODEL_PATH = "C:\\stable-diffusion\\catCitronAnimeTreasure_v10.safetensors"
 
 LORA_DIR = "C:\\stable-diffusion\\loras"
 
@@ -20,8 +21,10 @@ def callback(step: int, steps: int, time: float):
 
 try:
     prompts = [
-        {"add": "_lora", "prompt": "a lovely cat <lora:pixel_art:1>"},  # With LORA
-        {"add": "", "prompt": "a lovely cat"},  # Without LORA
+        # {"add": "_lora", "prompt": "a lovely cat <lora:realism_lora:1>"},  # With LORA
+        # {"add": "", "prompt": "a lovely cat"},  # Without LORA
+        {"add": "_lora", "prompt": "a cute cat glass statue <lora:glass_statue_v1:1>"},  # With LORA
+        {"add": "2", "prompt": "a cute cat glass statue"},  # Without LORA
     ]
 
     OUTPUT_DIR = "tests/outputs"
