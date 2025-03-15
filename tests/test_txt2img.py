@@ -24,7 +24,7 @@ try:
         # {"add": "_lora", "prompt": "a lovely cat <lora:realism_lora:1>"},  # With LORA
         # {"add": "", "prompt": "a lovely cat"},  # Without LORA
         {"add": "_lora", "prompt": "a cute cat glass statue <lora:glass_statue_v1:1>"},  # With LORA
-        {"add": "2", "prompt": "a cute cat glass statue"},  # Without LORA
+        {"add": "", "prompt": "a cute cat glass statue"},  # Without LORA
     ]
 
     OUTPUT_DIR = "tests/outputs"
