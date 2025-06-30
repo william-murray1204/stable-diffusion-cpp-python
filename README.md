@@ -106,7 +106,7 @@ CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_
 <details>
 <summary>Using Metal</summary>
 
-Using Metal makes the computation run on the GPU. Currently, there are some issues with Metal when performing operations on very large matrices, making it highly inefficient at the moment. Performance improvements are expected in the near future.
+Using Metal runs the computation on Apple Silicon. Currently, there are some issues with Metal when performing operations on very large matrices, making it highly inefficient. Performance improvements are expected in the near future.
 
 ```bash
 CMAKE_ARGS="-DSD_METAL=ON" pip install stable-diffusion-cpp-python
@@ -129,7 +129,7 @@ CMAKE_ARGS="-DSD_VULKAN=ON" pip install stable-diffusion-cpp-python
 <details>
 <summary>Using SYCL</summary>
 
-Using SYCL makes the computation run on the Intel GPU. Please make sure you have installed the related driver and [Intel® oneAPI Base toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html) before start. More details and steps can refer to [llama.cpp SYCL backend](https://github.com/ggerganov/llama.cpp/blob/master/docs/backend/SYCL.md#linux).
+Using SYCL runs the computation on an Intel GPU. Please make sure you have installed the related driver and [Intel® oneAPI Base toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html) before starting. For more details refer to [llama.cpp SYCL backend](https://github.com/ggerganov/llama.cpp/blob/master/docs/backend/SYCL.md#linux).
 
 ```bash
 # Export relevant ENV variables
@@ -167,7 +167,6 @@ CMAKE_ARGS="-DGGML_OPENBLAS=ON" pip install stable-diffusion-cpp-python
 </details>
 
 <!-- MUSA -->
-
 <details>
 <summary>Using MUSA</summary>
 
@@ -189,7 +188,7 @@ The high-level API provides a simple managed interface through the `StableDiffus
 
 Below is a short example demonstrating how to use the high-level API to generate a simple image:
 
-### Text to Image
+### <u>Text to Image</u>
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
@@ -211,7 +210,7 @@ output = stable_diffusion.txt_to_img(
 output[0].save("output.png") # Output returned as list of PIL Images
 ```
 
-#### With LoRA (Stable Diffusion)
+#### <u>With LoRA (Stable Diffusion)</u>
 
 You can specify the directory where the lora weights are stored via `lora_model_dir`. If not specified, the default is the current working directory.
 
@@ -234,9 +233,11 @@ output = stable_diffusion.txt_to_img(
 
 - The `lora_model_dir` argument is used in the same way for FLUX image generation.
 
-### FLUX Image Generation
+---
 
-FLUX models should be run using the same implementation as the [stable-diffusion.cpp FLUX documentation](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux.md) where the `diffusion_model_path` argument is used in place of the `model_path`. The `clip_l_path`, `t5xxl_path`, and `vae_path` arguments are also required for inference to function.
+### <u>FLUX Image Generation</u>
+
+FLUX models should be run using the same implementation as the [stable-diffusion.cpp FLUX documentation](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux.md) where the `diffusion_model_path` argument is used in place of the `model_path`. The `clip_l_path`, `t5xxl_path`, and `vae_path` arguments are also required for inference to function (for most models).
 
 Download the weights from the links below:
 
@@ -263,24 +264,77 @@ output = stable_diffusion.txt_to_img(
 )
 ```
 
-#### With LoRA (FLUX)
+#### <u>With LoRA (FLUX)</u>
 
 LoRAs can be used with FLUX models in the same way as Stable Diffusion models ([as shown above](#with-lora-stable-diffusion)).
 
 Note that:
 
 - It is recommended you use LoRAs with naming formats compatible with ComfyUI.
-- LoRAs will only work with Flux-dev q8_0.
+- LoRAs will only work with `Flux-dev q8_0`.
 - You can download FLUX LoRA models from https://huggingface.co/XLabs-AI/flux-lora-collection/tree/main (you must use a comfy converted version!!!).
 
-### SD3.5 Image Generation
+#### <u>Kontext (FLUX)</u>
 
 Download the weights from the links below:
 
-- Download sd3.5_large from https://huggingface.co/stabilityai/stable-diffusion-3.5-large/blob/main/sd3.5_large.safetensors
-- Download clip_g from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/clip_g.safetensors
-- Download clip_l from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/clip_l.safetensors
-- Download t5xxl from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp16.safetensors
+- Preconverted gguf model from [FLUX.1-Kontext-dev-GGUF](https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF)
+- Otherwise, download FLUX.1-Kontext-dev from [black-forest-labs/FLUX.1-Kontext-dev](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev/blob/main/flux1-kontext-dev.safetensors)
+- The `vae`, `clip_l`, and `t5xxl` models are the same as for FLUX image generation linked above.
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+    diffusion_model_path="../models/flux1-kontext-dev-Q5_K_S.gguf", # In place of model_path
+    clip_l_path="../models/clip_l.safetensors",
+    t5xxl_path="../models/t5xxl_fp16.safetensors",
+    vae_path="../models/ae.safetensors",
+    vae_decode_only=False, # Must be False for FLUX Kontext
+)
+output = stable_diffusion.edit(
+      prompt="make the cat blue",
+      images=["input.png"],
+      cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
+      sample_method="euler", # euler is recommended for FLUX
+)
+```
+
+#### <u>Chroma (FLUX)</u>
+
+Download the weights from the links below:
+
+- Preconverted gguf model from [silveroxides/Chroma-GGUF](https://huggingface.co/silveroxides/Chroma-GGUF)
+- Otherwise, download chroma's safetensors from [lodestones/Chroma](https://huggingface.co/lodestones/Chroma)
+- The `vae` and `t5xxl` models are the same as for FLUX image generation linked above (`clip_l` not required).
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+    diffusion_model_path="../models/chroma-unlocked-v40-Q4_0.gguf", # In place of model_path
+    t5xxl_path="../models/t5xxl_fp16.safetensors",
+    vae_path="../models/ae.safetensors",
+    vae_decode_only=True, # Can be True if we dont use img_to_img
+)
+output = stable_diffusion.txt_to_img(
+      prompt="a lovely cat holding a sign says 'chroma.cpp'",
+      sample_steps=4,
+      cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
+      sample_method="euler", # euler is recommended for FLUX
+)
+```
+
+---
+
+### <u>SD3.5 Image Generation</u>
+
+Download the weights from the links below:
+
+- Download `sd3.5_large` from https://huggingface.co/stabilityai/stable-diffusion-3.5-large/blob/main/sd3.5_large.safetensors
+- Download `clip_g` from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/clip_g.safetensors
+- Download `clip_l` from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/clip_l.safetensors
+- Download `t5xxl` from https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/blob/main/text_encoders/t5xxl_fp16.safetensors
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
@@ -300,10 +354,13 @@ output = stable_diffusion.txt_to_img(
 )
 ```
 
-### Image to Image
+---
+
+### <u>Image to Image</u>
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
+# from PIL import Image
 
 INPUT_IMAGE = "../input.png"
 # INPUT_IMAGE = Image.open("../input.png") # or alternatively, pass as PIL Image
@@ -317,7 +374,7 @@ output = stable_diffusion.img_to_img(
 )
 ```
 
-### Inpainting
+### <u>Inpainting</u>
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
@@ -333,7 +390,9 @@ output = stable_diffusion.img_to_img(
 )
 ```
 
-### PhotoMaker
+---
+
+### <u>PhotoMaker</u>
 
 You can use [PhotoMaker](https://github.com/TencentARC/PhotoMaker) to personalize generated images with your own ID.
 
@@ -366,27 +425,27 @@ output = stable_diffusion.txt_to_img(
 )
 ```
 
-### PhotoMaker Version 2
+#### <u>PhotoMaker Version 2</u>
 
-[PhotoMaker Version 2 (PMV2)](https://github.com/TencentARC/PhotoMaker/blob/main/README_pmv2.md) has some key improvements. Unfortunately it has a very heavy dependency which makes running it a bit involved in `SD.cpp`.
+[PhotoMaker Version 2 (PMV2)](https://github.com/TencentARC/PhotoMaker/blob/main/README_pmv2.md) has some key improvements. Unfortunately it has a very heavy dependency which makes running it a bit involved.
 
-Running PMV2 Requires running a python script `face_detect.py` (found [here](https://github.com/leejet/stable-diffusion.cpp/blob/master/face_detect.py)) to obtain **id_embeds** for the given input images.
+Running PMV2 Requires running a python script `face_detect.py` (found here [stable-diffusion.cpp/face_detect.py](https://github.com/leejet/stable-diffusion.cpp/blob/master/face_detect.py)) to obtain `id_embeds` for the given input images.
 
-```
+```bash
 python face_detect.py <input_image_dir>
 ```
 
 An `id_embeds.safetensors` file will be generated in `input_images_dir`.
 
-**Note: this step is only needed to run once; the same `id_embeds` can be reused**
+**Note: This step only needs to be run once — the resulting `id_embeds` can be reused.**
 
 - Run the same command as in version 1 but replacing `photomaker-v1.safetensors` with `photomaker-v2.safetensors`.
+  Download `photomaker-v2.safetensors` from [bssrdf/PhotoMakerV2](https://huggingface.co/bssrdf/PhotoMakerV2).
+- All other parameters from Version 1 remain the same for Version 2.
 
-  You can download `photomaker-v2.safetensors` from [here](https://huggingface.co/bssrdf/PhotoMakerV2).
+---
 
-- All the other parameters from Version 1 remain the same for Version 2.
-
-### Listing GGML model and RNG types, schedulers and sample methods
+### <u>Listing GGML model and RNG types, schedulers and sample methods</u>
 
 Access the GGML model and RNG types, schedulers, and sample methods via the following maps:
 
@@ -399,7 +458,9 @@ print("Schedulers:", list(SCHEDULE_MAP))
 print("Sample methods:", list(SAMPLE_METHOD_MAP))
 ```
 
-### Other High-level API Examples
+---
+
+### <u>Other High-level API Examples</u>
 
 Other examples for the high-level API (such as upscaling and model conversion) can be found in the [tests](tests) directory.
 
@@ -408,7 +469,7 @@ Other examples for the high-level API (such as upscaling and model conversion) c
 The low-level API is a direct [`ctypes`](https://docs.python.org/3/library/ctypes.html) binding to the C API provided by `stable-diffusion.cpp`.
 The entire low-level API can be found in [stable_diffusion_cpp/stable_diffusion_cpp.py](https://github.com/william-murray1204/stable-diffusion-cpp-python/blob/main/stable_diffusion_cpp/stable_diffusion_cpp.py) and directly mirrors the C API in [stable-diffusion.h](https://github.com/leejet/stable-diffusion.cpp/blob/master/stable-diffusion.h).
 
-Below is a short example demonstrating how to use the low-level API:
+Below is a short example demonstrating low-level API usage:
 
 ```python
 import stable_diffusion_cpp as sd_cpp
@@ -427,12 +488,6 @@ c_image = sd_cpp.sd_image_t(
             ctypes.POINTER(ctypes.c_uint8),
       ),
 ) # Create a new C sd_image_t
-
-img = sd_cpp.upscale(
-      self.upscaler,
-      image_bytes,
-      upscale_factor,
-) # Upscale the image
 ```
 
 ## Development

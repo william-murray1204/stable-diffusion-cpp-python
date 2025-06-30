@@ -39,6 +39,9 @@ class _StableDiffusionModel:
         keep_control_net_cpu: bool,
         keep_vae_on_cpu: bool,
         diffusion_flash_attn: bool,
+        chroma_use_dit_mask: bool,
+        chroma_use_t5_mask: bool,
+        chroma_t5_mask_pad: int,
         verbose: bool,
     ):
         self.model_path = model_path
@@ -62,6 +65,9 @@ class _StableDiffusionModel:
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self.diffusion_flash_attn = diffusion_flash_attn
+        self.chroma_use_dit_mask = chroma_use_dit_mask
+        self.chroma_use_t5_mask = chroma_use_t5_mask
+        self.chroma_t5_mask_pad = chroma_t5_mask_pad
         self.verbose = verbose
 
         self._exit_stack = ExitStack()
@@ -104,8 +110,11 @@ class _StableDiffusionModel:
                     self.schedule,
                     self.keep_clip_on_cpu,
                     self.keep_control_net_cpu,
-                    self.diffusion_flash_attn,
                     self.keep_vae_on_cpu,
+                    self.diffusion_flash_attn,
+                    self.chroma_use_dit_mask,
+                    self.chroma_use_t5_mask,
+                    self.chroma_t5_mask_pad,
                 )
 
             # Check if the model was loaded successfully

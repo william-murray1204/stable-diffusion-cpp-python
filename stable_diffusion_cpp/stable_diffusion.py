@@ -40,6 +40,9 @@ class StableDiffusion:
         keep_control_net_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
         diffusion_flash_attn: bool = False,
+        chroma_use_dit_mask: bool = True,
+        chroma_use_t5_mask: bool = False,
+        chroma_t5_mask_pad: int = 1,
         verbose: bool = True,
     ):
         """Load a stable-diffusion.cpp model from `model_path`.
@@ -76,6 +79,9 @@ class StableDiffusion:
             keep_control_net_cpu: Keep controlnet in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
             diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly).
+            chroma_use_dit_mask: Use DiT mask for chroma.
+            chroma_use_t5_mask: Use T5 mask for chroma.
+            chroma_t5_mask_pad: T5 mask padding size of chroma.
             verbose: Print verbose output to stderr.
 
         Raises:
@@ -106,6 +112,9 @@ class StableDiffusion:
         self.keep_control_net_cpu = keep_control_net_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self.diffusion_flash_attn = diffusion_flash_attn
+        self.chroma_use_dit_mask = chroma_use_dit_mask
+        self.chroma_use_t5_mask = chroma_use_t5_mask
+        self.chroma_t5_mask_pad = chroma_t5_mask_pad
         self._stack = contextlib.ExitStack()
 
         # Default to half the number of CPUs
@@ -128,28 +137,31 @@ class StableDiffusion:
         self._model = self._stack.enter_context(
             contextlib.closing(
                 _StableDiffusionModel(
-                    self.model_path,
-                    self.clip_l_path,
-                    self.clip_g_path,
-                    self.t5xxl_path,
-                    self.diffusion_model_path,
-                    self.vae_path,
-                    self.taesd_path,
-                    self.control_net_path,
-                    self.lora_model_dir,
-                    self.embed_dir,
-                    self.stacked_id_embed_dir,
-                    self.vae_decode_only,
-                    self.vae_tiling,
-                    self.n_threads,
-                    self.wtype,
-                    self.rng_type,
-                    self.schedule,
-                    self.keep_clip_on_cpu,
-                    self.keep_control_net_cpu,
-                    self.keep_vae_on_cpu,
-                    self.diffusion_flash_attn,
-                    self.verbose,
+                    model_path=self.model_path,
+                    clip_l_path=self.clip_l_path,
+                    clip_g_path=self.clip_g_path,
+                    t5xxl_path=self.t5xxl_path,
+                    diffusion_model_path=self.diffusion_model_path,
+                    vae_path=self.vae_path,
+                    taesd_path=self.taesd_path,
+                    control_net_path=self.control_net_path,
+                    lora_model_dir=self.lora_model_dir,
+                    embed_dir=self.embed_dir,
+                    stacked_id_embed_dir=self.stacked_id_embed_dir,
+                    vae_decode_only=self.vae_decode_only,
+                    vae_tiling=self.vae_tiling,
+                    n_threads=self.n_threads,
+                    wtype=self.wtype,
+                    rng_type=self.rng_type,
+                    schedule=self.schedule,
+                    keep_clip_on_cpu=self.keep_clip_on_cpu,
+                    keep_control_net_cpu=self.keep_control_net_cpu,
+                    keep_vae_on_cpu=self.keep_vae_on_cpu,
+                    diffusion_flash_attn=self.diffusion_flash_attn,
+                    chroma_use_dit_mask=self.chroma_use_dit_mask,
+                    chroma_use_t5_mask=self.chroma_use_t5_mask,
+                    chroma_t5_mask_pad=self.chroma_t5_mask_pad,
+                    verbose=self.verbose,
                 )
             )
         )
@@ -159,9 +171,9 @@ class StableDiffusion:
         self._upscaler = self._stack.enter_context(
             contextlib.closing(
                 _UpscalerModel(
-                    upscaler_path,
-                    self.n_threads,
-                    self.verbose,
+                    upscaler_path=upscaler_path,
+                    n_threads=self.n_threads,
+                    verbose=self.verbose,
                 )
             )
         )
@@ -587,6 +599,160 @@ class StableDiffusion:
         #     )
 
         # return self._sd_image_t_p_to_images(c_video, video_frames, 1)
+
+    # ============================================
+    # Edit
+    # ============================================
+
+    def edit(
+        self,
+        images: List[Union[Image.Image, str]],
+        prompt: str,
+        negative_prompt: str = "",
+        clip_skip: int = -1,
+        cfg_scale: float = 7.0,
+        guidance: float = 3.5,
+        eta: float = 0.0,
+        width: int = 512,
+        height: int = 512,
+        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
+        sample_steps: int = 20,
+        strength: float = 0.75,
+        seed: int = 42,
+        batch_count: int = 1,
+        control_cond: Optional[Union[Image.Image, str]] = None,
+        control_strength: float = 0.9,
+        style_strength: float = 20.0,
+        normalize_input: bool = False,
+        skip_layers: List[int] = [7, 8, 9],
+        slg_scale: float = 0.0,
+        skip_layer_start: float = 0.01,
+        skip_layer_end: float = 0.2,
+        canny: bool = False,
+        upscale_factor: int = 1,
+        progress_callback: Optional[Callable] = None,
+    ) -> List[Image.Image]:
+        """Create variations on a set of images and a text prompt.
+
+        Args:
+            images: A list of input image paths or Pillow Images to be edited.
+            prompt: The prompt to render.
+            negative_prompt: The negative prompt.
+            clip_skip: Ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer.
+            cfg_scale: Unconditional guidance scale.
+            guidance: Guidance scale.
+            eta: Eta in DDIM, only for DDIM and TCD.
+            width: Image height, in pixel space.
+            height: Image width, in pixel space.
+            sample_method: Sampling method.
+            sample_steps: Number of sample steps.
+            strength: Strength for noising/unnoising.
+            seed: RNG seed (default: 42, use random seed for < 0).
+            batch_count: Number of images to generate.
+            control_cond: A control condition image path or Pillow Image.
+            control_strength: Strength to apply Control Net.
+            style_strength: Strength for keeping input identity (default: 20%).
+            normalize_input: Normalize PHOTOMAKER input id images.
+            skip_layers: Layers to skip for SLG steps (default: [7,8,9]).
+            slg_scale: Skip layer guidance (SLG) scale, only for DiT models (default: 0).
+            skip_layer_start: SLG enabling point (default: 0.01).
+            skip_layer_end: SLG disabling point (default: 0.2).
+            canny: Apply canny edge detection preprocessor to the control_cond image.
+            upscale_factor: The image upscaling factor.
+            progress_callback: Callback function to call on each step end.
+
+        Returns:
+            A list of Pillow Images."""
+
+        if self.model is None:
+            raise Exception("Stable diffusion model not loaded.")
+
+        if self.vae_decode_only == True:
+            raise Exception("Cannot run edit with vae_decode_only set to True.")
+
+        # =========== Validate string and int inputs ===========
+
+        sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
+
+        # Ensure dimensions are multiples of 64
+        width = validate_dimensions(width, "width")
+        height = validate_dimensions(height, "height")
+
+        # =========== Set seed ===========
+
+        # Set a random seed if seed is negative
+        if seed < 0:
+            seed = random.randint(0, 10000)
+
+        # ==================== Set the callback function ====================
+
+        if progress_callback is not None:
+
+            @sd_cpp.sd_progress_callback
+            def sd_progress_callback(
+                step: int,
+                steps: int,
+                time: float,
+                data: ctypes.c_void_p,
+            ):
+                progress_callback(step, steps, time)
+
+            sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
+        # ==================== Format Inputs ====================
+
+        # Convert the control condition to a C sd_image_t
+        control_cond = self._format_control_cond(control_cond, canny, self.control_net_path)
+
+        # Convert skip_layers to a ctypes array
+        skip_layers_array = (ctypes.c_int * len(skip_layers))(*skip_layers)
+        skip_layers_count = len(skip_layers)
+
+        # ==================== Load Image Inputs ====================
+
+        if not isinstance(images, list):
+            images = [images]
+
+        ref_images = []
+        for img in images:
+            # Convert the image to a byte array
+            img_ptr = self._image_to_sd_image_t_p(img)
+            ref_images.append(img_ptr)
+
+        # Create a contiguous array of sd_image_t
+        RefImageArrayType = sd_cpp.sd_image_t * len(ref_images)
+        ref_images_array = RefImageArrayType(*ref_images)
+
+        with suppress_stdout_stderr(disable=self.verbose):
+            # Generate images
+            c_images = sd_cpp.edit(
+                self.model,
+                ref_images_array,
+                len(ref_images),
+                prompt.encode("utf-8"),
+                negative_prompt.encode("utf-8"),
+                clip_skip,
+                cfg_scale,
+                guidance,
+                eta,
+                width,
+                height,
+                sample_method,
+                sample_steps,
+                strength,
+                seed,
+                batch_count,
+                control_cond,
+                control_strength,
+                style_strength,
+                normalize_input,
+                skip_layers_array,
+                skip_layers_count,
+                slg_scale,
+                skip_layer_start,
+                skip_layer_end,
+            )
+        return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
 
     # ============================================
     # Preprocess Canny
