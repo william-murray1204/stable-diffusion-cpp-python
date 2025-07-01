@@ -178,6 +178,71 @@ CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/local/musa/bin/clang -DCMAKE_CXX_COMPILER=/u
 
 </details>
 
+<!-- OpenCL -->
+<details>
+<summary>Using OpenCL (Adreno GPU)</summary>
+
+Currently, it only supports Adreno GPUs and is primarily optimized for Q4_0 type.
+
+To build for Windows ARM please refers to [Windows 11 Arm64](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/OPENCL.md#windows-11-arm64)
+
+Building for Android:
+
+Android NDK:
+
+- Download and install the Android NDK from the [official Android developer site](https://developer.android.com/ndk/downloads).
+
+Setup OpenCL Dependencies for NDK:
+You need to provide OpenCL headers and the ICD loader library to your NDK sysroot.
+
+- OpenCL Headers:
+
+  ```bash
+  # In a temporary working directory
+  git clone https://github.com/KhronosGroup/OpenCL-Headers
+  cd OpenCL-Headers
+
+  # Replace <YOUR_NDK_PATH> with your actual NDK installation path
+  # e.g., cp -r CL /path/to/android-ndk-r26c/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+  sudo cp -r CL <YOUR_NDK_PATH>/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include
+  cd ..
+  ```
+
+- OpenCL ICD Loader:
+
+  ```bash
+  # In the same temporary working directory
+  git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader
+  cd OpenCL-ICD-Loader
+  mkdir build_ndk && cd build_ndk
+
+  # Replace <YOUR_NDK_PATH> in the CMAKE_TOOLCHAIN_FILE and OPENCL_ICD_LOADER_HEADERS_DIR
+  cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_TOOLCHAIN_FILE=<YOUR_NDK_PATH>/build/cmake/android.toolchain.cmake \
+    -DOPENCL_ICD_LOADER_HEADERS_DIR=<YOUR_NDK_PATH>/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include \
+    -DANDROID_ABI=arm64-v8a \
+    -DANDROID_PLATFORM=24 \
+    -DANDROID_STL=c++_shared
+
+  ninja
+  # Replace <YOUR_NDK_PATH>
+  # e.g., cp libOpenCL.so /path/to/android-ndk-r26c/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
+  sudo cp libOpenCL.so <YOUR_NDK_PATH>/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android
+  cd ../..
+  ```
+
+Build `stable-diffusion-cpp-python` for Android with (untested):
+
+```bash
+# Replace <YOUR_NDK_PATH> with your actual NDK installation path
+# e.g., -DCMAKE_TOOLCHAIN_FILE=/path/to/android-ndk-r26c/build/cmake/android.toolchain.cmake
+CMAKE_ARGS="-G Ninja -DCMAKE_TOOLCHAIN_FILE=<YOUR_NDK_PATH>/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 -DGGML_OPENMP=OFF -DSD_OPENCL=ON
+```
+
+_(Note: Don't forget to include `LD_LIBRARY_PATH=/vendor/lib64` in your command line before running the binary)_
+
+</details>
+
 ### Upgrading and Reinstalling
 
 To upgrade and rebuild `stable-diffusion-cpp-python` add `--upgrade --force-reinstall --no-cache-dir` flags to the `pip install` command to ensure the package is rebuilt from source.
