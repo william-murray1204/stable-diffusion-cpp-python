@@ -33,7 +33,7 @@ try:
 
     for prompt in prompts:
         # Generate images
-        images = stable_diffusion.txt_to_img(
+        images = stable_diffusion.generate_image(
             prompt=prompt["prompt"],
             sample_steps=4,
             progress_callback=callback,

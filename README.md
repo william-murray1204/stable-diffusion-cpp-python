@@ -265,7 +265,7 @@ stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
       # wtype="default", # Weight type (e.g. "q8_0", "f16", etc) (The "default" setting is automatically applied and determines the weight type of a model file)
 )
-output = stable_diffusion.txt_to_img(
+output = stable_diffusion.generate_image(
       prompt="a lovely cat",
       width=512, # Must be a multiple of 64
       height=512, # Must be a multiple of 64
@@ -291,7 +291,7 @@ stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
       lora_model_dir="../models/", # This should point to folder where LoRA weights are stored (not an individual file)
 )
-output = stable_diffusion.txt_to_img(
+output = stable_diffusion.generate_image(
       prompt="a lovely cat<lora:marblesh:1>",
 )
 ```
@@ -319,9 +319,9 @@ stable_diffusion = StableDiffusion(
     clip_l_path="../models/clip_l.safetensors",
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
-    vae_decode_only=True, # Can be True if we dont use img_to_img
+    vae_decode_only=True, # Can be True if not generating image to image
 )
-output = stable_diffusion.txt_to_img(
+output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'flux.cpp'",
       sample_steps=4,
       cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
@@ -357,7 +357,7 @@ stable_diffusion = StableDiffusion(
     vae_path="../models/ae.safetensors",
     vae_decode_only=False, # Must be False for FLUX Kontext
 )
-output = stable_diffusion.edit(
+output = stable_diffusion.generate_image(
       prompt="make the cat blue",
       images=["input.png"],
       cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
@@ -380,9 +380,9 @@ stable_diffusion = StableDiffusion(
     diffusion_model_path="../models/chroma-unlocked-v40-Q4_0.gguf", # In place of model_path
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
-    vae_decode_only=True, # Can be True if we dont use img_to_img
+    vae_decode_only=True, # Can be True if we are not generating image to image
 )
-output = stable_diffusion.txt_to_img(
+output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'chroma.cpp'",
       sample_steps=4,
       cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
@@ -410,7 +410,7 @@ stable_diffusion = StableDiffusion(
     clip_g_path="../models/clip_g.safetensors",
     t5xxl_path="../models/t5xxl_fp16.safetensors",
 )
-output = stable_diffusion.txt_to_img(
+output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'Stable diffusion 3.5 Large'",
       height=1024,
       width=1024,
@@ -432,9 +432,9 @@ INPUT_IMAGE = "../input.png"
 
 stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.safetensors")
 
-output = stable_diffusion.img_to_img(
+output = stable_diffusion.generate_image(
       prompt="blue eyes",
-      image=INPUT_IMAGE, # Note: The input image will be automatically resized to the match the width and height arguments (default: 512x512)
+      init_image=INPUT_IMAGE, # Note: The input image will be automatically resized to the match the width and height arguments (default: 512x512)
       strength=0.4,
 )
 ```
@@ -447,9 +447,9 @@ from stable_diffusion_cpp import StableDiffusion
 # Note: Inpainting with a base model gives poor results. A model fine-tuned for inpainting is recommended.
 stable_diffusion = StableDiffusion(model_path="../models/v1-5-pruned-emaonly.safetensors")
 
-output = stable_diffusion.img_to_img(
+output = stable_diffusion.generate_image(
       prompt="blue eyes",
-      image="../input.png",
+      init_image="../input.png",
       mask_image="../mask.png", # A grayscale image where 0 is masked and 255 is unmasked
       strength=0.4,
 )
@@ -478,7 +478,7 @@ stable_diffusion = StableDiffusion(
       # keep_vae_on_cpu=True,  # If on low memory GPUs (<= 8GB), setting this to True is recommended to get artifact free images
 )
 
-output = stable_diffusion.txt_to_img(
+output = stable_diffusion.generate_image(
       cfg_scale=5.0, # a cfg_scale of 5.0 is recommended for PhotoMaker
       height=1024,
       width=1024,
@@ -553,6 +553,15 @@ c_image = sd_cpp.sd_image_t(
             ctypes.POINTER(ctypes.c_uint8),
       ),
 ) # Create a new C sd_image_t
+
+# Convert a model from safetensors to gguf format
+sd_cpp.convert(
+      "../models/v1-5-pruned-emaonly.safetensors".encode("utf-8"), # input_path
+      "".encode("utf-8"), # vae_path
+      "../models/v1-5-pruned-emaonly.gguf".encode("utf-8"), # output_path
+      sd_cpp.GGMLType.SD_TYPE_Q8_0, # output_type
+      "".encode("utf-8"), # tensor_type_rules
+)
 ```
 
 ## Development

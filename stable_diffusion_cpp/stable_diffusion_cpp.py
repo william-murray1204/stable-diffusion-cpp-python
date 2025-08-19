@@ -155,11 +155,13 @@ ggml_abort_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p)
 
 # enum rng_type_t {
 #     STD_DEFAULT_RNG,
-#     CUDA_RNG
+#     CUDA_RNG,
+#     RNG_TYPE_COUNT
 # };
 class RNGType(IntEnum):
     STD_DEFAULT_RNG = 0
     CUDA_RNG = 1
+    RNG_TYPE_COUNT = 2
 
 
 # enum sample_method_t {
@@ -175,7 +177,7 @@ class RNGType(IntEnum):
 #     LCM,
 #     DDIM_TRAILING,
 #     TCD,
-#     N_SAMPLE_METHODS
+#     SAMPLE_METHOD_COUNT
 # };
 class SampleMethod(IntEnum):
     EULER_A = 0
@@ -190,7 +192,7 @@ class SampleMethod(IntEnum):
     LCM = 9
     DDIM_TRAILING = 10
     TCD = 11
-    N_SAMPLE_METHODS = 12
+    SAMPLE_METHOD_COUNT = 12
 
 
 # enum schedule_t {
@@ -200,7 +202,7 @@ class SampleMethod(IntEnum):
 #     EXPONENTIAL,
 #     AYS,
 #     GITS,
-#     N_SCHEDULES
+#     SCHEDULE_COUNT
 # };
 class Schedule(IntEnum):
     DEFAULT = 0
@@ -209,7 +211,7 @@ class Schedule(IntEnum):
     EXPONENTIAL = 3
     AYS = 4
     GITS = 5
-    N_SCHEDULES = 6
+    SCHEDULE_COUNT = 6
 
 
 # // same as enum ggml_type
@@ -303,71 +305,66 @@ class GGMLType(IntEnum):
 # Inference
 # ==================================
 
+# ------------ sd_ctx_params_t ------------
+
+
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* t5xxl_path; const char* diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* stacked_id_embed_dir; bool vae_decode_only; bool vae_tiling; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum schedule_t schedule; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; } sd_ctx_params_t;
+class sd_ctx_params_t(ctypes.Structure):
+    _fields_ = [
+        ("model_path", ctypes.c_char_p),
+        ("clip_l_path", ctypes.c_char_p),
+        ("clip_g_path", ctypes.c_char_p),
+        ("t5xxl_path", ctypes.c_char_p),
+        ("diffusion_model_path", ctypes.c_char_p),
+        ("vae_path", ctypes.c_char_p),
+        ("taesd_path", ctypes.c_char_p),
+        ("control_net_path", ctypes.c_char_p),
+        ("lora_model_dir", ctypes.c_char_p),
+        ("embedding_dir", ctypes.c_char_p),
+        ("stacked_id_embed_dir", ctypes.c_char_p),
+        ("vae_decode_only", ctypes.c_bool),
+        ("vae_tiling", ctypes.c_bool),
+        ("free_params_immediately", ctypes.c_bool),
+        ("n_threads", ctypes.c_int),
+        ("wtype", ctypes.c_int),  # GGMLType
+        ("rng_type", ctypes.c_int),  # RNGType
+        ("schedule", ctypes.c_int),  # Schedule
+        ("keep_clip_on_cpu", ctypes.c_bool),
+        ("keep_control_net_on_cpu", ctypes.c_bool),
+        ("keep_vae_on_cpu", ctypes.c_bool),
+        ("diffusion_flash_attn", ctypes.c_bool),
+        ("chroma_use_dit_mask", ctypes.c_bool),
+        ("chroma_use_t5_mask", ctypes.c_bool),
+        ("chroma_t5_mask_pad", ctypes.c_int),
+    ]
+
+
+# ------------ sd_ctx_t ------------
+
+
+# typedef struct sd_ctx_t sd_ctx_t;
+class sd_ctx_t(ctypes.Structure):
+    pass
+
+
+# struct sd_ctx;
+sd_ctx_t_p = NewType("sd_ctx_t_p", int)
+sd_ctx_t_p_ctypes = ctypes.POINTER(sd_ctx_t)
+
+
 # ------------ new_sd_ctx ------------
 
-# struct sd_context;
-sd_ctx_t_p = NewType("sd_ctx_t_p", int)
-sd_ctx_t_p_ctypes = ctypes.c_void_p
 
-
-# SD_API sd_ctx_t* new_sd_ctx(const char* model_path, const char* clip_l_path, const char* clip_g_path, const char* t5xxl_path, const char* diffusion_model_path, const char* vae_path, const char* taesd_path, const char* control_net_path_c_str, const char* lora_model_dir, const char* embed_dir_c_str, const char* stacked_id_embed_dir_c_str, bool vae_decode_only, bool vae_tiling, bool free_params_immediately, int n_threads, enum sd_type_t wtype, enum rng_type_t rng_type, enum schedule_t s, bool keep_clip_on_cpu, bool keep_control_net_cpu, bool keep_vae_on_cpu, bool diffusion_flash_attn, bool chroma_use_dit_mask, bool chroma_use_t5_mask, int chroma_t5_mask_pad);
+# SD_API sd_ctx_t* new_sd_ctx(const sd_ctx_params_t* sd_ctx_params);
 @ctypes_function(
     "new_sd_ctx",
     [
-        ctypes.c_char_p,  # model_path
-        ctypes.c_char_p,  # clip_l_path
-        ctypes.c_char_p,  # clip_g_path
-        ctypes.c_char_p,  # t5xxl_path
-        ctypes.c_char_p,  # diffusion_model_path
-        ctypes.c_char_p,  # vae_path
-        ctypes.c_char_p,  # taesd_path
-        ctypes.c_char_p,  # control_net_path
-        ctypes.c_char_p,  # lora_model_dir
-        ctypes.c_char_p,  # embed_dir
-        ctypes.c_char_p,  # stacked_id_embed_dir
-        ctypes.c_bool,  # vae_decode_only
-        ctypes.c_bool,  # vae_tiling
-        ctypes.c_bool,  # free_params_immediately
-        ctypes.c_int,  # n_threads
-        ctypes.c_int,  # wtype (GGMLType)
-        ctypes.c_int,  # rng_type (RNGType)
-        ctypes.c_int,  # s (Schedule)
-        ctypes.c_bool,  # keep_clip_on_cpu
-        ctypes.c_bool,  # keep_control_net_cpu
-        ctypes.c_bool,  # keep_vae_on_cpu
-        ctypes.c_bool,  # diffusion_flash_attn
-        ctypes.c_bool,  # chroma_use_dit_mask
-        ctypes.c_bool,  # chroma_use_t5_mask
-        ctypes.c_int,  # chroma_t5_mask_pad
+        ctypes.POINTER(sd_ctx_params_t),  # sd_ctx_params
     ],
     sd_ctx_t_p_ctypes,
 )
 def new_sd_ctx(
-    model_path: bytes,
-    clip_l_path: bytes,
-    clip_g_path: bytes,
-    t5xxl_path: bytes,
-    diffusion_model_path: bytes,
-    vae_path: bytes,
-    taesd_path: bytes,
-    control_net_path: bytes,
-    lora_model_dir: bytes,
-    embed_dir: bytes,
-    stacked_id_embed_dir: bytes,
-    vae_decode_only: bool,
-    vae_tiling: bool,
-    free_params_immediately: bool,
-    n_threads: int,
-    wtype: int,  # GGMLType
-    rng_type: int,  # RNGType
-    s: int,  # Schedule
-    keep_clip_on_cpu: bool,
-    keep_control_net_cpu: bool,
-    keep_vae_on_cpu: bool,
-    diffusion_flash_attn: bool,
-    chroma_use_dit_mask: bool,
-    chroma_use_t5_mask: bool,
-    chroma_t5_mask_pad: int,
+    sd_ctx_params: sd_ctx_params_t,
     /,
 ) -> Optional[sd_ctx_t_p]: ...
 
@@ -378,7 +375,9 @@ def new_sd_ctx(
 # SD_API void free_sd_ctx(sd_ctx_t* sd_ctx);
 @ctypes_function(
     "free_sd_ctx",
-    [sd_ctx_t_p_ctypes],  # sd_ctx
+    [
+        sd_ctx_t_p_ctypes,  # sd_ctx
+    ],
     None,
 )
 def free_sd_ctx(
@@ -390,6 +389,7 @@ def free_sd_ctx(
 # ------------ sd_image_t ------------
 
 
+# typedef struct { uint32_t width; uint32_t height; uint32_t channel; uint8_t* data; } sd_image_t;
 class sd_image_t(ctypes.Structure):
     _fields_ = [
         ("width", ctypes.c_uint32),
@@ -399,249 +399,137 @@ class sd_image_t(ctypes.Structure):
     ]
 
 
-sd_image_t_p = ctypes.POINTER(sd_image_t)
+# ------------ sd_slg_params_t ------------
 
 
-# ------------ txt2img ------------
+# typedef struct { int* layers; size_t layer_count; float layer_start; float layer_end; float scale; } sd_slg_params_t;
+class sd_slg_params_t(ctypes.Structure):
+    _fields_ = [
+        ("layers", ctypes.POINTER(ctypes.c_int)),
+        ("layer_count", ctypes.c_size_t),
+        ("layer_start", ctypes.c_float),
+        ("layer_end", ctypes.c_float),
+        ("scale", ctypes.c_float),
+    ]
 
 
-# SD_API sd_image_t* txt2img(sd_ctx_t* sd_ctx, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, float eta, int width, int height, enum sample_method_t sample_method, int sample_steps, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
+# ------------ sd_guidance_params_t ------------
+
+
+# typedef struct { float txt_cfg; float img_cfg; float min_cfg; float distilled_guidance; sd_slg_params_t slg; } sd_guidance_params_t;
+class sd_guidance_params_t(ctypes.Structure):
+    _fields_ = [
+        ("txt_cfg", ctypes.c_float),
+        ("img_cfg", ctypes.c_float),
+        ("min_cfg", ctypes.c_float),
+        ("distilled_guidance", ctypes.c_float),
+        ("slg", sd_slg_params_t),
+    ]
+
+
+# ------------ sd_img_gen_params_t ------------
+
+
+# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_guidance_params_t guidance; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; sd_image_t mask_image; int width; int height; enum sample_method_t sample_method; int sample_steps; float eta; float strength; int64_t seed; int batch_count; const sd_image_t* control_cond; float control_strength; float style_strength; bool normalize_input; const char* input_id_images_path; } sd_img_gen_params_t;
+class sd_img_gen_params_t(ctypes.Structure):
+    _fields_ = [
+        ("prompt", ctypes.c_char_p),
+        ("negative_prompt", ctypes.c_char_p),
+        ("clip_skip", ctypes.c_int),
+        ("guidance", sd_guidance_params_t),
+        ("init_image", sd_image_t),
+        ("ref_images", ctypes.POINTER(sd_image_t)),
+        ("ref_images_count", ctypes.c_int),
+        ("mask_image", sd_image_t),
+        ("width", ctypes.c_int),
+        ("height", ctypes.c_int),
+        ("sample_method", ctypes.c_int),  # SampleMethod
+        ("sample_steps", ctypes.c_int),
+        ("eta", ctypes.c_float),
+        ("strength", ctypes.c_float),
+        ("seed", ctypes.c_int64),
+        ("batch_count", ctypes.c_int),
+        ("control_cond", ctypes.POINTER(sd_image_t)),
+        ("control_strength", ctypes.c_float),
+        ("style_strength", ctypes.c_float),
+        ("normalize_input", ctypes.c_bool),
+        ("input_id_images_path", ctypes.c_char_p),
+    ]
+
+
+# ------------ generate_image ------------
+
+
+# SD_API sd_image_t* generate_image(sd_ctx_t* sd_ctx, const sd_img_gen_params_t* sd_img_gen_params);
 @ctypes_function(
-    "txt2img",
+    "generate_image",
     [
         sd_ctx_t_p_ctypes,  # sd_ctx
-        ctypes.c_char_p,  # prompt
-        ctypes.c_char_p,  # negative_prompt
-        ctypes.c_int,  # clip_skip
-        ctypes.c_float,  # cfg_scale
-        ctypes.c_float,  # guidance
-        ctypes.c_float,  # eta
-        ctypes.c_int,  # width
-        ctypes.c_int,  # height
-        ctypes.c_int,  # sample_method
-        ctypes.c_int,  # sample_steps
-        ctypes.c_int64,  # seed
-        ctypes.c_int,  # batch_count
-        sd_image_t_p,  # control_cond
-        ctypes.c_float,  # control_strength
-        ctypes.c_float,  # style_strength
-        ctypes.c_bool,  # normalize_input
-        ctypes.c_char_p,  # input_id_images_path
-        ctypes.POINTER(ctypes.c_int),  # skip_layers
-        ctypes.c_size_t,  # skip_layers_count
-        ctypes.c_float,  # slg_scale
-        ctypes.c_float,  # skip_layer_start
-        ctypes.c_float,  # skip_layer_end
+        ctypes.POINTER(sd_img_gen_params_t),  # sd_img_gen_params
     ],
-    sd_image_t_p,
+    ctypes.POINTER(sd_image_t),
 )
-def txt2img(
+def generate_image(
     sd_ctx: sd_ctx_t_p,
-    prompt: bytes,
-    negative_prompt: bytes,
-    clip_skip: int,
-    cfg_scale: float,
-    guidance: float,
-    eta: float,
-    width: int,
-    height: int,
-    sample_method: int,  # SampleMethod
-    sample_steps: int,
-    seed: int,
-    batch_count: int,
-    control_cond: sd_image_t,
-    control_strength: float,
-    style_strength: float,
-    normalize_input: bool,
-    input_id_images_path: bytes,
-    skip_layers: List[int],
-    skip_layers_count: int,
-    slg_scale: float,
-    skip_layer_start: float,
-    skip_layer_end: float,
+    sd_img_gen_params: sd_img_gen_params_t,
     /,
 ) -> CtypesArray[sd_image_t]: ...
 
 
-# ------------ img2img ------------
+# ------------ sd_vid_gen_params_t ------------
 
 
-# SD_API sd_image_t* img2img(sd_ctx_t* sd_ctx, sd_image_t init_image, sd_image_t mask_image, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, float eta, int width, int height, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, const char* input_id_images_path, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
+# typedef struct { sd_image_t init_image; int width; int height; sd_guidance_params_t guidance; enum sample_method_t sample_method; int sample_steps; float strength; int64_t seed; int video_frames; int motion_bucket_id; int fps; float augmentation_level; } sd_vid_gen_params_t;
+class sd_vid_gen_params_t(ctypes.Structure):
+    _fields_ = [
+        ("init_image", sd_image_t),
+        ("width", ctypes.c_int),
+        ("height", ctypes.c_int),
+        ("guidance", sd_guidance_params_t),
+        ("sample_method", ctypes.c_int),
+        ("sample_steps", ctypes.c_int),
+        ("strength", ctypes.c_float),
+        ("seed", ctypes.c_int64),
+        ("video_frames", ctypes.c_int),
+        ("motion_bucket_id", ctypes.c_int),
+        ("fps", ctypes.c_int),
+        ("augmentation_level", ctypes.c_float),
+    ]
+
+
+# ------------ generate_video ------------
+
+
+# SD_API sd_image_t* generate_video(sd_ctx_t* sd_ctx, const sd_vid_gen_params_t* sd_vid_gen_params);  // broken
 @ctypes_function(
-    "img2img",
+    "generate_video",
     [
         sd_ctx_t_p_ctypes,  # sd_ctx
-        sd_image_t,  # init_image
-        sd_image_t,  # mask_image
-        ctypes.c_char_p,  # prompt
-        ctypes.c_char_p,  # negative_prompt
-        ctypes.c_int,  # clip_skip
-        ctypes.c_float,  # cfg_scale
-        ctypes.c_float,  # guidance
-        ctypes.c_float,  # eta
-        ctypes.c_int,  # width
-        ctypes.c_int,  # height
-        ctypes.c_int,  # sample_method
-        ctypes.c_int,  # sample_steps
-        ctypes.c_float,  # strength
-        ctypes.c_int64,  # seed
-        ctypes.c_int,  # batch_count
-        sd_image_t_p,  # control_cond
-        ctypes.c_float,  # control_strength
-        ctypes.c_float,  # style_strength
-        ctypes.c_bool,  # normalize_input
-        ctypes.c_char_p,  # input_id_images_path
-        ctypes.POINTER(ctypes.c_int),  # skip_layers
-        ctypes.c_size_t,  # skip_layers_count
-        ctypes.c_float,  # slg_scale
-        ctypes.c_float,  # skip_layer_start
-        ctypes.c_float,  # skip_layer_end
+        ctypes.POINTER(sd_vid_gen_params_t),  # sd_vid_gen_params
     ],
-    sd_image_t_p,
+    ctypes.POINTER(sd_image_t),
 )
-def img2img(
+def generate_video(
     sd_ctx: sd_ctx_t_p,
-    init_image: sd_image_t,
-    mask_image: sd_image_t,
-    prompt: bytes,
-    negative_prompt: bytes,
-    clip_skip: int,
-    cfg_scale: float,
-    guidance: float,
-    eta: float,
-    width: int,
-    height: int,
-    sample_method: int,  # SampleMethod
-    sample_steps: int,
-    strength: float,
-    seed: int,
-    batch_count: int,
-    control_cond: sd_image_t,
-    control_strength: float,
-    style_strength: float,
-    normalize_input: bool,
-    input_id_images_path: bytes,
-    skip_layers: List[int],
-    skip_layers_count: int,
-    slg_scale: float,
-    skip_layer_start: float,
-    skip_layer_end: float,
+    sd_vid_gen_params: sd_vid_gen_params_t,
     /,
 ) -> CtypesArray[sd_image_t]: ...
 
 
-# ------------ img2vid ------------
+# ------------ upscaler_ctx_t ------------
 
 
-# SD_API sd_image_t* img2vid(sd_ctx_t* sd_ctx, sd_image_t init_image, int width, int height, int video_frames, int motion_bucket_id, int fps, float augmentation_level, float min_cfg, float cfg_scale, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed);
-@ctypes_function(
-    "img2vid",
-    [
-        sd_ctx_t_p_ctypes,  # sd_ctx
-        sd_image_t,  # init_image
-        ctypes.c_int,  # width
-        ctypes.c_int,  # height
-        ctypes.c_int,  # video_frames
-        ctypes.c_int,  # motion_bucket_id
-        ctypes.c_int,  # fps
-        ctypes.c_float,  # augmentation_level
-        ctypes.c_float,  # min_cfg
-        ctypes.c_float,  # cfg_scale
-        ctypes.c_int,  # sample_method
-        ctypes.c_int,  # sample_steps
-        ctypes.c_float,  # strength
-        ctypes.c_int64,  # seed
-    ],
-    sd_image_t_p,
-)
-def img2vid(
-    sd_ctx: sd_ctx_t_p,
-    init_image: sd_image_t,
-    width: int,
-    height: int,
-    video_frames: int,
-    motion_bucket_id: int,
-    fps: int,
-    augmentation_level: float,
-    min_cfg: float,
-    cfg_scale: float,
-    sample_method: int,  # SampleMethod
-    sample_steps: int,
-    strength: float,
-    seed: int,
-    /,
-) -> CtypesArray[sd_image_t]: ...
+# typedef struct upscaler_ctx_t upscaler_ctx_t;
+class upscaler_ctx_t(ctypes.Structure):
+    pass
 
 
-# ------------ edit ------------
-
-
-# SD_API sd_image_t* edit(sd_ctx_t* sd_ctx, sd_image_t* ref_images, int ref_images_count, const char* prompt, const char* negative_prompt, int clip_skip, float cfg_scale, float guidance, float eta, int width, int height, enum sample_method_t sample_method, int sample_steps, float strength, int64_t seed, int batch_count, const sd_image_t* control_cond, float control_strength, float style_strength, bool normalize_input, int* skip_layers, size_t skip_layers_count, float slg_scale, float skip_layer_start, float skip_layer_end);
-@ctypes_function(
-    "edit",
-    [
-        sd_ctx_t_p_ctypes,  # sd_ctx
-        ctypes.POINTER(sd_image_t),  # ref_images
-        ctypes.c_int,  # ref_images_count
-        ctypes.c_char_p,  # prompt
-        ctypes.c_char_p,  # negative_prompt
-        ctypes.c_int,  # clip_skip
-        ctypes.c_float,  # cfg_scale
-        ctypes.c_float,  # guidance
-        ctypes.c_float,  # eta
-        ctypes.c_int,  # width
-        ctypes.c_int,  # height
-        ctypes.c_int,  # sample_method
-        ctypes.c_int,  # sample_steps
-        ctypes.c_float,  # strength
-        ctypes.c_int64,  # seed
-        ctypes.c_int,  # batch_count
-        sd_image_t_p,  # control_cond
-        ctypes.c_float,  # control_strength
-        ctypes.c_float,  # style_strength
-        ctypes.c_bool,  # normalize_input
-        ctypes.POINTER(ctypes.c_int),  # skip_layers
-        ctypes.c_size_t,  # skip_layers_count
-        ctypes.c_float,  # slg_scale
-        ctypes.c_float,  # skip_layer_start
-        ctypes.c_float,  # skip_layer_end
-    ],
-    sd_image_t_p,
-)
-def edit(
-    sd_ctx: sd_ctx_t_p,
-    ref_images: CtypesArray[sd_image_t],
-    ref_images_count: int,
-    prompt: bytes,
-    negative_prompt: bytes,
-    clip_skip: int,
-    cfg_scale: float,
-    guidance: float,
-    eta: float,
-    width: int,
-    height: int,
-    sample_method: int,  # SampleMethod
-    sample_steps: int,
-    strength: float,
-    seed: int,
-    batch_count: int,
-    control_cond: sd_image_t,
-    control_strength: float,
-    style_strength: float,
-    normalize_input: bool,
-    skip_layers: List[int],
-    skip_layers_count: int,
-    slg_scale: float,
-    skip_layer_start: float,
-    skip_layer_end: float,
-    /,
-) -> CtypesArray[sd_image_t]: ...
+# struct upscaler_ctx;
+upscaler_ctx_t_p = NewType("upscaler_ctx_t_p", int)
+upscaler_ctx_t_p_ctypes = ctypes.POINTER(upscaler_ctx_t)
 
 
 # ------------ new_upscaler_ctx ------------
-
-upscaler_ctx_t_p = NewType("upscaler_ctx_t_p", int)
-upscaler_ctx_t_p_ctypes = ctypes.c_void_p
 
 
 # SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads);
@@ -701,7 +589,7 @@ def upscale(
 # ------------ convert ------------
 
 
-# SD_API bool convert(const char* input_path, const char* vae_path, const char* output_path, sd_type_t output_type);
+# SD_API bool convert(const char* input_path, const char* vae_path, const char* output_path, enum sd_type_t output_type, const char* tensor_type_rules);
 @ctypes_function(
     "convert",
     [
@@ -709,6 +597,7 @@ def upscale(
         ctypes.c_char_p,  # vae_path
         ctypes.c_char_p,  # output_path
         ctypes.c_int,  # output_type
+        ctypes.c_char_p,  # tensor_type_rules
     ],
     ctypes.c_bool,
 )
@@ -717,6 +606,7 @@ def convert(
     vae_path: bytes,
     output_path: bytes,
     output_type: int,
+    tensor_type_rules: bytes,
     /,
 ) -> bool: ...
 

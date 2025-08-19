@@ -27,7 +27,7 @@ def callback(step: int, steps: int, time: float):
 
 try:
     # # Generate images
-    # images = stable_diffusion.txt_to_img(
+    # images = stable_diffusion.generate_image(
     #     prompt="a lovely cat",
     #     sample_steps=2,
     #     seed=42,

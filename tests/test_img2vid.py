@@ -13,8 +13,9 @@ stable_diffusion = StableDiffusion(model_path=MODEL_PATH)
 def callback(step: int, steps: int, time: float):
     print("Completed step: {} of {}".format(step, steps))
 
+
 try:
-    images = stable_diffusion.img_to_vid(image=input_image, progress_callback=callback)
+    images = stable_diffusion.generate_video(init_image=input_image, progress_callback=callback)
 
     OUTPUT_DIR = "tests/outputs"
     if not os.path.exists(OUTPUT_DIR):

@@ -8,6 +8,17 @@ CLIP_L_PATH = "C:\\stable-diffusion\\sd3.5\\clip_l.safetensors"
 CLIP_G_PATH = "C:\\stable-diffusion\\sd3.5\\clip_g.safetensors"
 T5XXL_PATH = "C:\\stable-diffusion\\sd3.5\\t5xxl_fp16.safetensors"
 
+PROMPT = "a lovely cat holding a sign says 'Stable diffusion 3.5 Large'"
+HEIGHT = 832
+WIDTH = 832
+CFG_SCALE = 4.5
+SAMPLE_METHOD = "euler"
+
+
+OUTPUT_DIR = "tests/outputs"
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
 stable_diffusion = StableDiffusion(
     model_path=MODEL_PATH,
     clip_l_path=CLIP_L_PATH,
@@ -22,17 +33,13 @@ def callback(step: int, steps: int, time: float):
 
 try:
     # Generate images
-    images = stable_diffusion.txt_to_img(
-        prompt="a lovely cat holding a sign says 'Stable diffusion 3.5 Large'",
-        height=832,
-        width=832,
-        cfg_scale=4.5,
-        sample_method="euler",
+    images = stable_diffusion.generate_image(
+        prompt=PROMPT,
+        height=HEIGHT,
+        width=WIDTH,
+        cfg_scale=CFG_SCALE,
+        sample_method=SAMPLE_METHOD,
     )
-
-    OUTPUT_DIR = "tests/outputs"
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
 
     # Save images
     for i, image in enumerate(images):
@@ -41,3 +48,40 @@ try:
 except Exception as e:
     traceback.print_exc()
     print("Test - sd3 failed: ", e)
+
+
+# # ======== C++ CLI ========
+
+# import subprocess
+
+# stable_diffusion = None  # Clear model
+
+# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+
+
+# cli_cmd = [
+#     SD_CPP_CLI,
+#     "--model",
+#     MODEL_PATH,
+#     "--t5xxl",
+#     T5XXL_PATH,
+#     "--clip_l",
+#     CLIP_L_PATH,
+#     "--clip_g",
+#     CLIP_G_PATH,
+#     "--prompt",
+#     PROMPT,
+#     "--height",
+#     str(HEIGHT),
+#     "--width",
+#     str(WIDTH),
+#     "--cfg-scale",
+#     str(CFG_SCALE),
+#     "--sample-method",
+#     SAMPLE_METHOD,
+#     "--output",
+#     f"{OUTPUT_DIR}/sd3_cli.png",
+#     "-v",
+# ]
+# print(" ".join(cli_cmd))
+# subprocess.run(cli_cmd, check=True)

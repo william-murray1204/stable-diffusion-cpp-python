@@ -3,9 +3,5 @@ python tests\test_txt2img.py; python tests\test_controlnet.py; python tests\test
 ```
 
 ```bash
-python tests\test_vulkan.py
-```
-
-```bash
 python tests\test_img2vid.py;
 ```

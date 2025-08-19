@@ -1,8 +1,8 @@
 import os
+import ctypes
 from contextlib import ExitStack
 
 import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
-
 from ._utils import suppress_stdout_stderr
 
 # ============================================
@@ -27,7 +27,7 @@ class _StableDiffusionModel:
         taesd_path: str,
         control_net_path: str,
         lora_model_dir: str,
-        embed_dir: str,
+        embedding_dir: str,
         stacked_id_embed_dir: str,
         vae_decode_only: bool,
         vae_tiling: bool,
@@ -36,7 +36,7 @@ class _StableDiffusionModel:
         rng_type: int,
         schedule: int,
         keep_clip_on_cpu: bool,
-        keep_control_net_cpu: bool,
+        keep_control_net_on_cpu: bool,
         keep_vae_on_cpu: bool,
         diffusion_flash_attn: bool,
         chroma_use_dit_mask: bool,
@@ -44,35 +44,35 @@ class _StableDiffusionModel:
         chroma_t5_mask_pad: int,
         verbose: bool,
     ):
-        self.model_path = model_path
-        self.clip_l_path = clip_l_path
-        self.clip_g_path = clip_g_path
-        self.t5xxl_path = t5xxl_path
-        self.diffusion_model_path = diffusion_model_path
-        self.vae_path = vae_path
-        self.taesd_path = taesd_path
-        self.control_net_path = control_net_path
-        self.lora_model_dir = lora_model_dir
-        self.embed_dir = embed_dir
-        self.stacked_id_embed_dir = stacked_id_embed_dir
-        self.vae_decode_only = vae_decode_only
-        self.vae_tiling = vae_tiling
-        self.n_threads = n_threads
-        self.wtype = wtype
-        self.rng_type = rng_type
-        self.schedule = schedule
-        self.keep_clip_on_cpu = keep_clip_on_cpu
-        self.keep_control_net_cpu = keep_control_net_cpu
-        self.keep_vae_on_cpu = keep_vae_on_cpu
-        self.diffusion_flash_attn = diffusion_flash_attn
-        self.chroma_use_dit_mask = chroma_use_dit_mask
-        self.chroma_use_t5_mask = chroma_use_t5_mask
-        self.chroma_t5_mask_pad = chroma_t5_mask_pad
-        self.verbose = verbose
-
         self._exit_stack = ExitStack()
-
         self.model = None
+        self.params = sd_cpp.sd_ctx_params_t(
+            model_path=model_path.encode("utf-8"),
+            clip_l_path=clip_l_path.encode("utf-8"),
+            clip_g_path=clip_g_path.encode("utf-8"),
+            t5xxl_path=t5xxl_path.encode("utf-8"),
+            diffusion_model_path=diffusion_model_path.encode("utf-8"),
+            vae_path=vae_path.encode("utf-8"),
+            taesd_path=taesd_path.encode("utf-8"),
+            control_net_path=control_net_path.encode("utf-8"),
+            lora_model_dir=lora_model_dir.encode("utf-8"),
+            embedding_dir=embedding_dir.encode("utf-8"),
+            stacked_id_embed_dir=stacked_id_embed_dir.encode("utf-8"),
+            vae_decode_only=vae_decode_only,
+            vae_tiling=vae_tiling,
+            free_params_immediately=False,  # Don't unload model
+            n_threads=n_threads,
+            wtype=wtype,
+            rng_type=rng_type,
+            schedule=schedule,
+            keep_clip_on_cpu=keep_clip_on_cpu,
+            keep_control_net_on_cpu=keep_control_net_on_cpu,
+            keep_vae_on_cpu=keep_vae_on_cpu,
+            diffusion_flash_attn=diffusion_flash_attn,
+            chroma_use_dit_mask=chroma_use_dit_mask,
+            chroma_use_t5_mask=chroma_use_t5_mask,
+            chroma_t5_mask_pad=chroma_t5_mask_pad,
+        )
 
         # Load the free_sd_ctx function
         self._free_sd_ctx = sd_cpp._lib.free_sd_ctx
@@ -88,34 +88,8 @@ class _StableDiffusionModel:
 
         if model_path or diffusion_model_path:
             with suppress_stdout_stderr(disable=verbose):
-                # Load the Stable Diffusion model ctx
-                self.model = sd_cpp.new_sd_ctx(
-                    self.model_path.encode("utf-8"),
-                    self.clip_l_path.encode("utf-8"),
-                    self.clip_g_path.encode("utf-8"),
-                    self.t5xxl_path.encode("utf-8"),
-                    self.diffusion_model_path.encode("utf-8"),
-                    self.vae_path.encode("utf-8"),
-                    self.taesd_path.encode("utf-8"),
-                    self.control_net_path.encode("utf-8"),
-                    self.lora_model_dir.encode("utf-8"),
-                    self.embed_dir.encode("utf-8"),
-                    self.stacked_id_embed_dir.encode("utf-8"),
-                    self.vae_decode_only,
-                    self.vae_tiling,
-                    False,  # Free params immediately (unload model)
-                    self.n_threads,
-                    self.wtype,
-                    self.rng_type,
-                    self.schedule,
-                    self.keep_clip_on_cpu,
-                    self.keep_control_net_cpu,
-                    self.keep_vae_on_cpu,
-                    self.diffusion_flash_attn,
-                    self.chroma_use_dit_mask,
-                    self.chroma_use_t5_mask,
-                    self.chroma_t5_mask_pad,
-                )
+                # Call function with a pointer to params
+                self.model = sd_cpp.new_sd_ctx(ctypes.byref(self.params))
 
             # Check if the model was loaded successfully
             if self.model is None:

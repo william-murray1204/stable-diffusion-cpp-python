@@ -17,6 +17,7 @@ try:
         "".encode("utf-8"),
         OUTPUT_MODEL_PATH.encode("utf-8"),
         sd_cpp.GGMLType.SD_TYPE_Q8_0,
+        "".encode("utf-8"),
     )
     print("Model converted: ", model_converted)
 
