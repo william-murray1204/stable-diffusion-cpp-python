@@ -308,7 +308,7 @@ class GGMLType(IntEnum):
 # ------------ sd_ctx_params_t ------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* t5xxl_path; const char* diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* stacked_id_embed_dir; bool vae_decode_only; bool vae_tiling; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum schedule_t schedule; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* t5xxl_path; const char* diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* stacked_id_embed_dir; bool vae_decode_only; bool vae_tiling; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum schedule_t schedule; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool diffusion_conv_direct; bool vae_conv_direct; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -333,6 +333,8 @@ class sd_ctx_params_t(ctypes.Structure):
         ("keep_control_net_on_cpu", ctypes.c_bool),
         ("keep_vae_on_cpu", ctypes.c_bool),
         ("diffusion_flash_attn", ctypes.c_bool),
+        ("diffusion_conv_direct", ctypes.c_bool),
+        ("vae_conv_direct", ctypes.c_bool),
         ("chroma_use_dit_mask", ctypes.c_bool),
         ("chroma_use_t5_mask", ctypes.c_bool),
         ("chroma_t5_mask_pad", ctypes.c_int),
@@ -532,18 +534,20 @@ upscaler_ctx_t_p_ctypes = ctypes.POINTER(upscaler_ctx_t)
 # ------------ new_upscaler_ctx ------------
 
 
-# SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads);
+# SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, int n_threads, bool direct);
 @ctypes_function(
     "new_upscaler_ctx",
     [
         ctypes.c_char_p,  # esrgan_path
         ctypes.c_int,  # n_threads
+        ctypes.c_bool,  # direct
     ],
     upscaler_ctx_t_p_ctypes,
 )
 def new_upscaler_ctx(
     esrgan_path: bytes,
     n_threads: int,
+    direct: bool,
     /,
 ) -> upscaler_ctx_t_p: ...
 

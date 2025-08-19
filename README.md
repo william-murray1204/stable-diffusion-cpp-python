@@ -267,8 +267,8 @@ stable_diffusion = StableDiffusion(
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat",
-      width=512, # Must be a multiple of 64
-      height=512, # Must be a multiple of 64
+      width=512,
+      height=512,
       progress_callback=callback,
       # seed=1337, # Uncomment to set a specific seed (use -1 for a random seed)
 )

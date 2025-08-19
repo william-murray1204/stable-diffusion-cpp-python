@@ -39,6 +39,8 @@ class _StableDiffusionModel:
         keep_control_net_on_cpu: bool,
         keep_vae_on_cpu: bool,
         diffusion_flash_attn: bool,
+        diffusion_conv_direct: bool,
+        vae_conv_direct: bool,
         chroma_use_dit_mask: bool,
         chroma_use_t5_mask: bool,
         chroma_t5_mask_pad: int,
@@ -69,6 +71,8 @@ class _StableDiffusionModel:
             keep_control_net_on_cpu=keep_control_net_on_cpu,
             keep_vae_on_cpu=keep_vae_on_cpu,
             diffusion_flash_attn=diffusion_flash_attn,
+            diffusion_conv_direct=diffusion_conv_direct,
+            vae_conv_direct=vae_conv_direct,
             chroma_use_dit_mask=chroma_use_dit_mask,
             chroma_use_t5_mask=chroma_use_t5_mask,
             chroma_t5_mask_pad=chroma_t5_mask_pad,
@@ -127,10 +131,12 @@ class _UpscalerModel:
         self,
         upscaler_path: str,
         n_threads: int,
+        diffusion_conv_direct: bool,
         verbose: bool,
     ):
         self.upscaler_path = upscaler_path
         self.n_threads = n_threads
+        self.diffusion_conv_direct = diffusion_conv_direct
         self.verbose = verbose
         self._exit_stack = ExitStack()
 
@@ -146,7 +152,11 @@ class _UpscalerModel:
                 raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
 
             # Load the image upscaling model ctx
-            self.upscaler = sd_cpp.new_upscaler_ctx(upscaler_path.encode("utf-8"), self.n_threads)
+            self.upscaler = sd_cpp.new_upscaler_ctx(
+                upscaler_path.encode("utf-8"),
+                self.n_threads,
+                self.diffusion_conv_direct,
+            )
 
             # Check if the model was loaded successfully
             if self.upscaler is None:

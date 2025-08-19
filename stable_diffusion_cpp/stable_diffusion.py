@@ -40,6 +40,8 @@ class StableDiffusion:
         keep_control_net_on_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
         diffusion_flash_attn: bool = False,
+        diffusion_conv_direct: bool = False,
+        vae_conv_direct: bool = False,
         chroma_use_dit_mask: bool = True,
         chroma_use_t5_mask: bool = False,
         chroma_t5_mask_pad: int = 1,
@@ -80,6 +82,8 @@ class StableDiffusion:
             keep_control_net_on_cpu: Keep controlnet in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
             diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly). May lower quality or crash if backend not supported.
+            diffusion_conv_direct: Use Conv2d direct in the diffusion model. May crash if backend not supported.
+            vae_conv_direct: Use Conv2d direct in the vae model (should improve performance). May crash if backend not supported.
             chroma_use_dit_mask: Use DiT mask for chroma.
             chroma_use_t5_mask: Use T5 mask for chroma.
             chroma_t5_mask_pad: T5 mask padding size of chroma.
@@ -114,6 +118,8 @@ class StableDiffusion:
         self.keep_control_net_on_cpu = keep_control_net_on_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self.diffusion_flash_attn = diffusion_flash_attn
+        self.diffusion_conv_direct = diffusion_conv_direct
+        self.vae_conv_direct = vae_conv_direct
         self.chroma_use_dit_mask = chroma_use_dit_mask
         self.chroma_use_t5_mask = chroma_use_t5_mask
         self.chroma_t5_mask_pad = chroma_t5_mask_pad
@@ -160,6 +166,8 @@ class StableDiffusion:
                     keep_control_net_on_cpu=self.keep_control_net_on_cpu,
                     keep_vae_on_cpu=self.keep_vae_on_cpu,
                     diffusion_flash_attn=self.diffusion_flash_attn,
+                    diffusion_conv_direct=self.diffusion_conv_direct,
+                    vae_conv_direct=self.vae_conv_direct,
                     chroma_use_dit_mask=self.chroma_use_dit_mask,
                     chroma_use_t5_mask=self.chroma_use_t5_mask,
                     chroma_t5_mask_pad=self.chroma_t5_mask_pad,
@@ -175,6 +183,7 @@ class StableDiffusion:
                 _UpscalerModel(
                     upscaler_path=upscaler_path,
                     n_threads=self.n_threads,
+                    diffusion_conv_direct=self.diffusion_conv_direct,
                     verbose=self.verbose,
                 )
             )
@@ -276,7 +285,7 @@ class StableDiffusion:
 
         sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
-        # Ensure dimensions are multiples of 64
+        # Ensure valid dimensions
         width = validate_dimensions(width, "width")
         height = validate_dimensions(height, "height")
 
@@ -407,7 +416,42 @@ class StableDiffusion:
             )
 
         # Convert the C array of images to a Python list of images
-        return self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
+        images = self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
+
+        # Attach metadata safely
+        for i, image in enumerate(images):
+            image.info.update(
+                {
+                    # Generation Parameters
+                    "prompt": prompt,
+                    "negative_prompt": negative_prompt,
+                    "seed": seed + i if batch_count > 1 else seed,  # Increment seed for each image in batch
+                    "sample_steps": sample_steps,
+                    "sample_method": sample_method,
+                    "cfg_scale": cfg_scale,
+                    "slg_scale": slg_scale,
+                    "skip_layers": skip_layers,
+                    "skip_layer_start": skip_layer_start,
+                    "skip_layer_end": skip_layer_end,
+                    "guidance": guidance,
+                    "eta": eta,
+                    "width": width,
+                    "height": height,
+                    # Model Context Parameters
+                    "model_path": self.model_path,
+                    "diffusion_model_path": self.diffusion_model_path,
+                    "vae_path": self.vae_path,
+                    "clip_l_path": self.clip_l_path,
+                    "clip_g_path": self.clip_g_path,
+                    "t5xxl_path": self.t5xxl_path,
+                    "taesd_path": self.taesd_path,
+                    "control_net_path": self.control_net_path,
+                    "rng_type": self.rng_type,
+                    "clip_skip": clip_skip,
+                }
+            )
+
+        return images
 
     # ============================================
     # Generate Video
@@ -476,7 +520,7 @@ class StableDiffusion:
 
         # sample_method = validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method")
 
-        # # Ensure dimensions are multiples of 64
+        # # Ensure valid dimensions
         # width = validate_dimensions(width, "width")
         # height = validate_dimensions(height, "height")
 
@@ -865,10 +909,9 @@ class StableDiffusion:
 
 
 def validate_dimensions(dimension: Union[int, float], attribute_name: str) -> int:
-    """Dimensions must be a multiple of 64 otherwise a GGML_ASSERT error is encountered."""
     dimension = int(dimension)
-    if dimension <= 0 or dimension % 64 != 0:
-        raise ValueError(f"The '{attribute_name}' must be a multiple of 64.")
+    if dimension <= 0:
+        raise ValueError(f"The '{attribute_name}' must be greater than 0.")
     return dimension
 
 
