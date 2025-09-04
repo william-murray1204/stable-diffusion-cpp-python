@@ -48,7 +48,7 @@ set ninja=C:\Program Files\ninja\ninja.exe
 ## Building stable-diffusion.cpp
 
 The thing different from the regular CPU build is `-DSD_HIPBLAS=ON` ,
-`-G "Ninja"`, `-DCMAKE_C_COMPILER=clang`, `-DCMAKE_CXX_COMPILER=clang++`, `-DAMDGPU_TARGETS=gfx1100`
+`-G "Ninja"`, `-DCMAKE_C_COMPILER=clang`, `-DCMAKE_CXX_COMPILER=clang++`, `-DAMDGPU_TARGETS=gfx1100`, `-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON`
 
 Note:
 If you encounter an error such as the following:
