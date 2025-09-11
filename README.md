@@ -369,24 +369,24 @@ output = stable_diffusion.generate_image(
 
 Download the weights from the links below:
 
-- Preconverted gguf model from [silveroxides/Chroma-GGUF](https://huggingface.co/silveroxides/Chroma-GGUF)
-- Otherwise, download chroma's safetensors from [lodestones/Chroma](https://huggingface.co/lodestones/Chroma)
+- Preconverted gguf model from [QuantStack/Chroma1-Flash-GGUF](https://huggingface.co/QuantStack/Chroma1-Flash-GGUF)
+- Otherwise, download chroma's safetensors from [lodestones/Chroma1-Flash](https://huggingface.co/lodestones/Chroma1-Flash)
 - The `vae` and `t5xxl` models are the same as for FLUX image generation linked above (`clip_l` not required).
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
-    diffusion_model_path="../models/chroma-unlocked-v40-Q4_0.gguf", # In place of model_path
+    diffusion_model_path="../models/Chroma1-HD-Flash-Q4_0.gguf.gguf", # In place of model_path
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
     vae_decode_only=True, # Can be True if we are not generating image to image
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'chroma.cpp'",
-      sample_steps=4,
-      cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
-      sample_method="euler", # euler is recommended for FLUX
+      sample_steps=8,
+      cfg_scale=1.0, # a cfg_scale of 1 is recommended for Chroma1-Flash
+      sample_method="heun", # heun is recommended for Chroma1-Flash
 )
 ```
 
