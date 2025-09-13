@@ -5,9 +5,9 @@ from contextlib import ExitStack
 import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 from ._utils import suppress_stdout_stderr
 
-# ============================================
+# ===========================================
 # Stable Diffusion Model
-# ============================================
+# ===========================================
 
 
 class _StableDiffusionModel:
@@ -21,8 +21,10 @@ class _StableDiffusionModel:
         model_path: str,
         clip_l_path: str,
         clip_g_path: str,
+        clip_vision_path: str,
         t5xxl_path: str,
         diffusion_model_path: str,
+        high_noise_diffusion_model_path: str,
         vae_path: str,
         taesd_path: str,
         control_net_path: str,
@@ -34,7 +36,7 @@ class _StableDiffusionModel:
         n_threads: int,
         wtype: int,
         rng_type: int,
-        schedule: int,
+        offload_params_to_cpu: bool,
         keep_clip_on_cpu: bool,
         keep_control_net_on_cpu: bool,
         keep_vae_on_cpu: bool,
@@ -44,6 +46,7 @@ class _StableDiffusionModel:
         chroma_use_dit_mask: bool,
         chroma_use_t5_mask: bool,
         chroma_t5_mask_pad: int,
+        flow_shift: int,
         verbose: bool,
     ):
         self._exit_stack = ExitStack()
@@ -52,8 +55,10 @@ class _StableDiffusionModel:
             model_path=model_path.encode("utf-8"),
             clip_l_path=clip_l_path.encode("utf-8"),
             clip_g_path=clip_g_path.encode("utf-8"),
+            clip_vision_path=clip_vision_path.encode("utf-8"),
             t5xxl_path=t5xxl_path.encode("utf-8"),
             diffusion_model_path=diffusion_model_path.encode("utf-8"),
+            high_noise_diffusion_model_path=high_noise_diffusion_model_path.encode("utf-8"),
             vae_path=vae_path.encode("utf-8"),
             taesd_path=taesd_path.encode("utf-8"),
             control_net_path=control_net_path.encode("utf-8"),
@@ -66,7 +71,7 @@ class _StableDiffusionModel:
             n_threads=n_threads,
             wtype=wtype,
             rng_type=rng_type,
-            schedule=schedule,
+            offload_params_to_cpu=offload_params_to_cpu,
             keep_clip_on_cpu=keep_clip_on_cpu,
             keep_control_net_on_cpu=keep_control_net_on_cpu,
             keep_vae_on_cpu=keep_vae_on_cpu,
@@ -76,6 +81,7 @@ class _StableDiffusionModel:
             chroma_use_dit_mask=chroma_use_dit_mask,
             chroma_use_t5_mask=chroma_use_t5_mask,
             chroma_t5_mask_pad=chroma_t5_mask_pad,
+            flow_shift=flow_shift,
         )
 
         # Load the free_sd_ctx function
@@ -84,11 +90,11 @@ class _StableDiffusionModel:
         # Load the model from the file if the path is provided
         if model_path:
             if not os.path.exists(model_path):
-                raise ValueError(f"Model path does not exist: {model_path}")
+                raise ValueError(f"Model path does not exist: '{model_path}'")
 
         if diffusion_model_path:
             if not os.path.exists(diffusion_model_path):
-                raise ValueError(f"Diffusion model path does not exist: {diffusion_model_path}")
+                raise ValueError(f"Diffusion model path does not exist: '{diffusion_model_path}'")
 
         if model_path or diffusion_model_path:
             with suppress_stdout_stderr(disable=verbose):
@@ -97,7 +103,7 @@ class _StableDiffusionModel:
 
             # Check if the model was loaded successfully
             if self.model is None:
-                raise ValueError(f"Failed to load model from file: {model_path}")
+                raise ValueError(f"Failed to load model from file: '{model_path}'")
 
         def free_ctx():
             """Free the model from memory."""
@@ -116,9 +122,9 @@ class _StableDiffusionModel:
         self.close()
 
 
-# ============================================
+# ===========================================
 # Upscaler Model
-# ============================================
+# ===========================================
 
 
 class _UpscalerModel:
@@ -130,13 +136,15 @@ class _UpscalerModel:
     def __init__(
         self,
         upscaler_path: str,
+        offload_params_to_cpu: bool,
+        direct: bool,
         n_threads: int,
-        diffusion_conv_direct: bool,
         verbose: bool,
     ):
         self.upscaler_path = upscaler_path
+        self.offload_params_to_cpu = offload_params_to_cpu
+        self.direct = direct
         self.n_threads = n_threads
-        self.diffusion_conv_direct = diffusion_conv_direct
         self.verbose = verbose
         self._exit_stack = ExitStack()
 
@@ -149,18 +157,19 @@ class _UpscalerModel:
             self._free_upscaler_ctx = sd_cpp._lib.free_upscaler_ctx
 
             if not os.path.exists(upscaler_path):
-                raise ValueError(f"Upscaler model path does not exist: {upscaler_path}")
+                raise ValueError(f"Upscaler model path does not exist: '{upscaler_path}'")
 
             # Load the image upscaling model ctx
             self.upscaler = sd_cpp.new_upscaler_ctx(
                 upscaler_path.encode("utf-8"),
+                self.offload_params_to_cpu,
+                self.direct,
                 self.n_threads,
-                self.diffusion_conv_direct,
             )
 
             # Check if the model was loaded successfully
             if self.upscaler is None:
-                raise ValueError(f"Failed to load upscaler model from file: {upscaler_path}")
+                raise ValueError(f"Failed to load upscaler model from file: '{upscaler_path}'")
 
         def free_ctx():
             """Free the model from memory."""

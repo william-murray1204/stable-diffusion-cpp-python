@@ -9,7 +9,7 @@ Simple Python bindings for **@leejet's** [`stable-diffusion.cpp`](https://github
 This package provides:
 
 - Low-level access to C API via `ctypes` interface.
-- High-level Python API for Stable Diffusion and FLUX image generation.
+- High-level Python API for Stable Diffusion, FLUX and Wan image/video generation.
 
 ## Installation
 
@@ -97,7 +97,9 @@ This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure 
 Windows users refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide and troubleshooting tips.
 
 ```bash
-CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=gfx1101 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON" pip install stable-diffusion-cpp-python
+export GFX_NAME=$(rocminfo | grep -m 1 -E "gfx[^0]{1}" | sed -e 's/ *Name: *//' | awk '{$1=$1; print}' || echo "rocminfo missing")
+echo $GFX_NAME
+CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=$GFX_NAME -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -273,6 +275,9 @@ output = stable_diffusion.generate_image(
       # seed=1337, # Uncomment to set a specific seed (use -1 for a random seed)
 )
 output[0].save("output.png") # Output returned as list of PIL Images
+
+# Model and generation paramaters accessible via .info
+print(output[0].info)
 ```
 
 #### <u>With LoRA (Stable Diffusion)</u>
@@ -323,7 +328,6 @@ stable_diffusion = StableDiffusion(
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'flux.cpp'",
-      sample_steps=4,
       cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
       sample_method="euler", # euler is recommended for FLUX
 )
@@ -369,22 +373,22 @@ output = stable_diffusion.generate_image(
 
 Download the weights from the links below:
 
-- Preconverted gguf model from [silveroxides/Chroma-GGUF](https://huggingface.co/silveroxides/Chroma-GGUF)
-- Otherwise, download chroma's safetensors from [lodestones/Chroma](https://huggingface.co/lodestones/Chroma)
+- Preconverted gguf model from [silveroxides/Chroma1-Flash-GGUF](https://huggingface.co/silveroxides/Chroma1-Flash-GGUF), [silveroxides/Chroma1-Base-GGUF](https://huggingface.co/silveroxides/Chroma1-Base-GGUF) or [silveroxides/Chroma1-HD-GGUF](https://huggingface.co/silveroxides/Chroma1-HD-GGUF) ([silveroxides/Chroma-GGUF](https://huggingface.co/silveroxides/Chroma-GGUF) is DEPRECATED)
+- Otherwise, download chroma's safetensors from [lodestones/Chroma1-Flash](https://huggingface.co/lodestones/Chroma1-Flash), [lodestones/Chroma1-Base](https://huggingface.co/lodestones/Chroma1-Base) or [lodestones/Chroma1-HD](https://huggingface.co/lodestones/Chroma1-HD) ([lodestones/Chroma](https://huggingface.co/lodestones/Chroma) is DEPRECATED)
 - The `vae` and `t5xxl` models are the same as for FLUX image generation linked above (`clip_l` not required).
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
-    diffusion_model_path="../models/chroma-unlocked-v40-Q4_0.gguf", # In place of model_path
+    diffusion_model_path="../models/Chroma1-HD-Flash-Q4_0.gguf", # In place of model_path
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
     vae_decode_only=True, # Can be True if we are not generating image to image
+    chroma_use_dit_mask=False,
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'chroma.cpp'",
-      sample_steps=4,
       cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
       sample_method="euler", # euler is recommended for FLUX
 )
@@ -510,16 +514,83 @@ An `id_embeds.safetensors` file will be generated in `input_images_dir`.
 
 ---
 
+### <u>WAN Video Generation</u>
+
+See [stable-diffusion.cpp WAN download weights](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md#download-weights) for a complete list of WAN models.
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/wan2.1_t2v_1.3B_fp16.safetensors", # In place of model_path
+      t5xxl_path="../models/umt5-xxl-encoder-Q8_0.gguf",
+      vae_path="../models/wan_2.1_vae.safetensors",
+      flow_shift=3.0,
+)
+
+output = stable_diffusion.generate_video(
+      prompt="a cute dog jumping",
+      negative_prompt="色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部， 畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+      height=832,
+      width=480,
+      cfg_scale=6.0,
+      sample_method="euler",
+      video_frames=33,
+) # Output is a list of PIL Images (video frames)
+```
+
+As the output is simply a list of images (video frames), you can convert it into a video using any library you prefer. The example below uses `ffmpeg-python`. Alternatively, libraries such **OpenCV** or **MoviePy** can also be used.
+
+> **Note**
+>
+> - You'll require **Python bindings for FFmpeg**, `python-ffmpeg` (`pip install ffmpeg-python`) in addition to an **FFmpeg installation on your system**, accessible in your PATH. Check with `ffmpeg -version`.
+
+```python
+from typing import List
+from PIL import Image
+import numpy as np
+import ffmpeg
+
+def save_video_ffmpeg(frames: List[Image.Image], fps: int, out_path: str) -> None:
+      if not frames:
+            raise ValueError("No frames provided")
+
+      width, height = frames[0].size
+
+      # Concatenate frames into raw RGB bytes
+      raw_bytes = b"".join(np.array(frame.convert("RGB"), dtype=np.uint8).tobytes() for frame in frames)
+      (
+            ffmpeg.input(
+                  "pipe:",
+                  format="rawvideo",
+                  pix_fmt="rgb24",
+                  s=f"{width}x{height}",
+                  r=fps,
+            )
+            .output(
+                  out_path,
+                  vcodec="libx264",
+                  pix_fmt="yuv420p",
+                  r=fps,
+                  movflags="+faststart",
+            )
+            .overwrite_output()
+            .run(input=raw_bytes)
+      )
+
+save_video_ffmpeg(output, fps=16, out_path="output.mp4")
+```
+
 ### <u>Listing GGML model and RNG types, schedulers and sample methods</u>
 
 Access the GGML model and RNG types, schedulers, and sample methods via the following maps:
 
 ```python
-from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULE_MAP, SAMPLE_METHOD_MAP
+from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULER_MAP, SAMPLE_METHOD_MAP
 
 print("GGML model types:", list(GGML_TYPE_MAP))
 print("RNG types:", list(RNG_TYPE_MAP))
-print("Schedulers:", list(SCHEDULE_MAP))
+print("Schedulers:", list(SCHEDULER_MAP))
 print("Sample methods:", list(SAMPLE_METHOD_MAP))
 ```
 

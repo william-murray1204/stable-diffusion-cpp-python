@@ -1,11 +1,12 @@
-import os
-import traceback
+from PIL import PngImagePlugin
+from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "C:\\stable-diffusion\\photomaker\\sdxlUnstableDiffusers_v11.safetensors"
 STACKED_ID_EMBED_DIR = "C:\\stable-diffusion\\photomaker\\photomaker-v1.safetensors"
 VAE_PATH = "C:\\stable-diffusion\\photomaker\\sdxl.vae.safetensors"
+
 
 INPUT_ID_IMAGES_PATH = ".\\assets\\newton_man"
 
@@ -17,18 +18,18 @@ WIDTH = 1024
 CFG_SCALE = 5.0
 SAMPLE_METHOD = "euler"
 
-OUTPUT_DIR = "tests/outputs"
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
 
-stable_diffusion = StableDiffusion(stacked_id_embed_dir=STACKED_ID_EMBED_DIR, model_path=MODEL_PATH, vae_path=VAE_PATH)
+def test_photomaker():
 
+    stable_diffusion = StableDiffusion(
+        stacked_id_embed_dir=STACKED_ID_EMBED_DIR,
+        model_path=MODEL_PATH,
+        vae_path=VAE_PATH,
+    )
 
-def callback(step: int, steps: int, time: float):
-    print("Completed step: {} of {}".format(step, steps))
+    def callback(step: int, steps: int, time: float):
+        print("Completed step: {} of {}".format(step, steps))
 
-
-try:
     # Generate images
     photomaker_images = stable_diffusion.generate_image(
         cfg_scale=CFG_SCALE,
@@ -42,15 +43,16 @@ try:
         progress_callback=callback,
     )
 
+    # Save images
     for i, image in enumerate(photomaker_images):
-        image.save(f"{OUTPUT_DIR}/photomaker_{i}.png")
-
-except Exception as e:
-    traceback.print_exc()
-    print("Test - photomaker failed: ", e)
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+        image.save(f"{OUTPUT_DIR}/photomaker_{i}.png", pnginfo=pnginfo)
 
 
-# # ======== C++ CLI ========
+# ===========================================
+# C++ CLI
+# ===========================================
 
 # import subprocess
 

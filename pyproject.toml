@@ -30,6 +30,14 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "black>=24.8.0",
+    "isort>=5.13.2",
+    "pytest>=7.4.4",
+    "ffmpeg-python>=0.2.0",
+]
+
 [tool.scikit-build]
 wheel.packages = ["stable_diffusion_cpp"]
 cmake.verbose = true
@@ -54,3 +62,6 @@ profile = "black"
 known_local_folder = ["stable_diffusion_cpp"]
 remove_redundant_aliases = true
 length_sort = true
+
+[tool.pytest.ini_options]
+testpaths = "tests"

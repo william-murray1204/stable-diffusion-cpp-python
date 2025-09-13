@@ -1,37 +1,35 @@
-import os
-import traceback
+from PIL import PngImagePlugin
+from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "C:\\stable-diffusion\\sd3.5\\sd3.5_large-q4_k_5_0.gguf"
 CLIP_L_PATH = "C:\\stable-diffusion\\sd3.5\\clip_l.safetensors"
 CLIP_G_PATH = "C:\\stable-diffusion\\sd3.5\\clip_g.safetensors"
-T5XXL_PATH = "C:\\stable-diffusion\\sd3.5\\t5xxl_fp16.safetensors"
+T5XXL_PATH = "C:\\stable-diffusion\\sd3.5\\t5xxl_fp8_e4m3fn.safetensors"
+
 
 PROMPT = "a lovely cat holding a sign says 'Stable diffusion 3.5 Large'"
-HEIGHT = 832
-WIDTH = 832
+HEIGHT = 512
+WIDTH = 512
 CFG_SCALE = 4.5
 SAMPLE_METHOD = "euler"
+SAMPLE_STEPS = 4
 
 
-OUTPUT_DIR = "tests/outputs"
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
+def test_sd3():
 
-stable_diffusion = StableDiffusion(
-    model_path=MODEL_PATH,
-    clip_l_path=CLIP_L_PATH,
-    clip_g_path=CLIP_G_PATH,
-    t5xxl_path=T5XXL_PATH,
-)
+    stable_diffusion = StableDiffusion(
+        model_path=MODEL_PATH,
+        clip_l_path=CLIP_L_PATH,
+        clip_g_path=CLIP_G_PATH,
+        t5xxl_path=T5XXL_PATH,
+        keep_clip_on_cpu=True,
+    )
 
+    def callback(step: int, steps: int, time: float):
+        print("Completed step: {} of {}".format(step, steps))
 
-def callback(step: int, steps: int, time: float):
-    print("Completed step: {} of {}".format(step, steps))
-
-
-try:
     # Generate images
     images = stable_diffusion.generate_image(
         prompt=PROMPT,
@@ -39,49 +37,54 @@ try:
         width=WIDTH,
         cfg_scale=CFG_SCALE,
         sample_method=SAMPLE_METHOD,
+        sample_steps=SAMPLE_STEPS,
+        progress_callback=callback,
     )
 
     # Save images
     for i, image in enumerate(images):
-        image.save(f"{OUTPUT_DIR}/sd3_{i}.png")
-
-except Exception as e:
-    traceback.print_exc()
-    print("Test - sd3 failed: ", e)
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+        image.save(f"{OUTPUT_DIR}/sd3_{i}.png", pnginfo=pnginfo)
 
 
-# # ======== C++ CLI ========
+# ===========================================
+# C++ CLI
+# ===========================================
 
-# import subprocess
+import subprocess
 
-# stable_diffusion = None  # Clear model
+stable_diffusion = None  # Clear model
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
 
 
-# cli_cmd = [
-#     SD_CPP_CLI,
-#     "--model",
-#     MODEL_PATH,
-#     "--t5xxl",
-#     T5XXL_PATH,
-#     "--clip_l",
-#     CLIP_L_PATH,
-#     "--clip_g",
-#     CLIP_G_PATH,
-#     "--prompt",
-#     PROMPT,
-#     "--height",
-#     str(HEIGHT),
-#     "--width",
-#     str(WIDTH),
-#     "--cfg-scale",
-#     str(CFG_SCALE),
-#     "--sample-method",
-#     SAMPLE_METHOD,
-#     "--output",
-#     f"{OUTPUT_DIR}/sd3_cli.png",
-#     "-v",
-# ]
-# print(" ".join(cli_cmd))
-# subprocess.run(cli_cmd, check=True)
+cli_cmd = [
+    SD_CPP_CLI,
+    "--model",
+    MODEL_PATH,
+    "--t5xxl",
+    T5XXL_PATH,
+    "--clip_l",
+    CLIP_L_PATH,
+    "--clip_g",
+    CLIP_G_PATH,
+    "--prompt",
+    PROMPT,
+    "--height",
+    str(HEIGHT),
+    "--width",
+    str(WIDTH),
+    "--cfg-scale",
+    str(CFG_SCALE),
+    "--sampling-method",
+    SAMPLE_METHOD,
+    "--steps",
+    str(SAMPLE_STEPS),
+    "--clip-on-cpu",
+    "--output",
+    f"{OUTPUT_DIR}/sd3_cli.png",
+    "-v",
+]
+print(" ".join(cli_cmd))
+subprocess.run(cli_cmd, check=True)

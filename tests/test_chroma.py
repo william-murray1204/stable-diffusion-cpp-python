@@ -1,9 +1,9 @@
-import os
-import traceback
+from PIL import PngImagePlugin
+from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux-chroma\\chroma-unlocked-v40-Q4_0.gguf"
+DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux-chroma\\Chroma1-HD-Flash-Q4_0.gguf"
 T5XXL_PATH = "C:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
 VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
 
@@ -13,24 +13,21 @@ STEPS = 4
 CFG_SCALE = 4.0
 SAMPLE_METHOD = "euler"
 
-OUTPUT_DIR = "tests/outputs"
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
 
+def test_chroma():
 
-stable_diffusion = StableDiffusion(
-    diffusion_model_path=DIFFUSION_MODEL_PATH,
-    t5xxl_path=T5XXL_PATH,
-    vae_path=VAE_PATH,
-    vae_decode_only=True,
-)
+    stable_diffusion = StableDiffusion(
+        diffusion_model_path=DIFFUSION_MODEL_PATH,
+        t5xxl_path=T5XXL_PATH,
+        vae_path=VAE_PATH,
+        keep_clip_on_cpu=True,
+        vae_decode_only=True,
+        chroma_use_dit_mask=False,
+    )
 
+    def callback(step: int, steps: int, time: float):
+        print("Completed step: {} of {}".format(step, steps))
 
-def callback(step: int, steps: int, time: float):
-    print("Completed step: {} of {}".format(step, steps))
-
-
-try:
     # Generate images
     images = stable_diffusion.generate_image(
         prompt=PROMPT,
@@ -42,14 +39,14 @@ try:
 
     # Save images
     for i, image in enumerate(images):
-        image.save(f"{OUTPUT_DIR}/chroma_{i}.png")
-
-except Exception as e:
-    traceback.print_exc()
-    print("Test - chroma failed: ", e)
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+        image.save(f"{OUTPUT_DIR}/chroma_{i}.png", pnginfo=pnginfo)
 
 
-# # ======== C++ CLI ========
+# ===========================================
+# C++ CLI
+# ===========================================
 
 # import subprocess
 
@@ -73,6 +70,8 @@ except Exception as e:
 #     str(CFG_SCALE),
 #     "--sampling-method",
 #     SAMPLE_METHOD,
+#     "--clip-on-cpu",
+#     "--chroma-disable-dit-mask",
 #     "--output",
 #     f"{OUTPUT_DIR}/chroma_cli.png",
 #     "-v",
