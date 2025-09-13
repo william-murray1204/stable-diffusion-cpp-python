@@ -202,6 +202,7 @@ class SampleMethod(IntEnum):
 #     EXPONENTIAL,
 #     AYS,
 #     GITS,
+#     SMOOTHSTEP,
 #     SCHEDULE_COUNT
 # };
 class Scheduler(IntEnum):
@@ -211,7 +212,8 @@ class Scheduler(IntEnum):
     EXPONENTIAL = 3
     AYS = 4
     GITS = 5
-    SCHEDULE_COUNT = 6
+    SMOOTHSTEP = 6
+    SCHEDULE_COUNT = 7
 
 
 # // same as enum ggml_type

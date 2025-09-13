@@ -52,39 +52,39 @@ def test_sd3():
 # C++ CLI
 # ===========================================
 
-import subprocess
+# import subprocess
 
-stable_diffusion = None  # Clear model
+# stable_diffusion = None  # Clear model
 
-SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
 
 
-cli_cmd = [
-    SD_CPP_CLI,
-    "--model",
-    MODEL_PATH,
-    "--t5xxl",
-    T5XXL_PATH,
-    "--clip_l",
-    CLIP_L_PATH,
-    "--clip_g",
-    CLIP_G_PATH,
-    "--prompt",
-    PROMPT,
-    "--height",
-    str(HEIGHT),
-    "--width",
-    str(WIDTH),
-    "--cfg-scale",
-    str(CFG_SCALE),
-    "--sampling-method",
-    SAMPLE_METHOD,
-    "--steps",
-    str(SAMPLE_STEPS),
-    "--clip-on-cpu",
-    "--output",
-    f"{OUTPUT_DIR}/sd3_cli.png",
-    "-v",
-]
-print(" ".join(cli_cmd))
-subprocess.run(cli_cmd, check=True)
+# cli_cmd = [
+#     SD_CPP_CLI,
+#     "--model",
+#     MODEL_PATH,
+#     "--t5xxl",
+#     T5XXL_PATH,
+#     "--clip_l",
+#     CLIP_L_PATH,
+#     "--clip_g",
+#     CLIP_G_PATH,
+#     "--prompt",
+#     PROMPT,
+#     "--height",
+#     str(HEIGHT),
+#     "--width",
+#     str(WIDTH),
+#     "--cfg-scale",
+#     str(CFG_SCALE),
+#     "--sampling-method",
+#     SAMPLE_METHOD,
+#     "--steps",
+#     str(SAMPLE_STEPS),
+#     "--clip-on-cpu",
+#     "--output",
+#     f"{OUTPUT_DIR}/sd3_cli.png",
+#     "-v",
+# ]
+# print(" ".join(cli_cmd))
+# subprocess.run(cli_cmd, check=True)

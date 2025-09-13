@@ -1185,6 +1185,7 @@ SCHEDULER_MAP = {
     "exponential": Scheduler.EXPONENTIAL,
     "ays": Scheduler.AYS,
     "gits": Scheduler.GITS,
+    "smoothstep": Scheduler.SMOOTHSTEP,
     "schedule_count": Scheduler.SCHEDULE_COUNT,
 }
 
