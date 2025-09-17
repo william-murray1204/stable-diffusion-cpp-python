@@ -514,9 +514,9 @@ An `id_embeds.safetensors` file will be generated in `input_images_dir`.
 
 ---
 
-### <u>WAN Video Generation</u>
+### <u>Wan Video Generation</u>
 
-See [stable-diffusion.cpp WAN download weights](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md#download-weights) for a complete list of WAN models.
+See [stable-diffusion.cpp Wan download weights](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md#download-weights) for a complete list of Wan models.
 
 ```python
 from stable_diffusion_cpp import StableDiffusion

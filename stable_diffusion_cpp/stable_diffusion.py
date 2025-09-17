@@ -784,7 +784,9 @@ class StableDiffusion:
         if self.upscaler is None:
             raise RuntimeError("Upscaling model not loaded")
 
-        # ==================== Set the callback function ====================
+        # -------------------------------------------
+        # Set the Callback Function
+        # -------------------------------------------
 
         if progress_callback is not None:
 
@@ -802,7 +804,9 @@ class StableDiffusion:
         if not isinstance(images, list):
             images = [images]  # Wrap single image in a list
 
-        # ==================== Upscale images ====================
+        # -------------------------------------------
+        # Upscale Images
+        # -------------------------------------------
 
         upscaled_images = []
         for image in images:
@@ -980,7 +984,7 @@ class StableDiffusion:
         """Convert an image path or Pillow Image to a Pillow Image of RGBA or grayscale (inpainting masks) format."""
         # Convert image path to image if str
         if isinstance(image, str):
-            image = Image.open(image)
+            image = Image.open(self._clean_path(image))
 
         if channel == 1:
             # Grayscale the image if channel is 1
