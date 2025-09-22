@@ -49,9 +49,9 @@ def test_txt2img():
 
 # import subprocess
 
-# stable_diffusion = None  # Clear model
+# from conftest import SD_CPP_CLI
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# stable_diffusion = None  # Clear model
 
 # for prompt in PROMPTS:
 #     cli_cmd = [

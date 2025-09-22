@@ -11,7 +11,6 @@ VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
 PROMPT = "a lovely cat holding a sign says 'chroma.cpp'"
 STEPS = 4
 CFG_SCALE = 4.0
-SAMPLE_METHOD = "euler"
 
 
 def test_chroma():
@@ -33,7 +32,6 @@ def test_chroma():
         prompt=PROMPT,
         sample_steps=STEPS,
         cfg_scale=CFG_SCALE,
-        sample_method=SAMPLE_METHOD,
         progress_callback=callback,
     )
 
@@ -50,9 +48,9 @@ def test_chroma():
 
 # import subprocess
 
-# stable_diffusion = None  # Clear model
+# from conftest import SD_CPP_CLI
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# stable_diffusion = None  # Clear model
 
 # cli_cmd = [
 #     SD_CPP_CLI,
@@ -68,8 +66,6 @@ def test_chroma():
 #     str(STEPS),
 #     "--cfg-scale",
 #     str(CFG_SCALE),
-#     "--sampling-method",
-#     SAMPLE_METHOD,
 #     "--clip-on-cpu",
 #     "--chroma-disable-dit-mask",
 #     "--output",

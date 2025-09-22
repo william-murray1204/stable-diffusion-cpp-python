@@ -54,9 +54,9 @@ def test_sd3():
 
 # import subprocess
 
-# stable_diffusion = None  # Clear model
+# from conftest import SD_CPP_CLI
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# stable_diffusion = None  # Clear model
 
 
 # cli_cmd = [

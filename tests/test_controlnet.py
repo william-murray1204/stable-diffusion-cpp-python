@@ -46,9 +46,9 @@ def test_controlnet():
 
 # import subprocess
 
-# stable_diffusion = None  # Clear model
+# from conftest import SD_CPP_CLI
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# stable_diffusion = None  # Clear model
 
 # for prompt in PROMPTS:
 #     cli_cmd = [
@@ -61,10 +61,14 @@ def test_controlnet():
 #         prompt["prompt"],
 #         "--control-image",
 #         INPUT_IMAGE_PATH,
-#         "--canny" if prompt["canny"] else "",
+#         "--canny" if prompt["canny"] else None,
 #         "--output",
 #         f"{OUTPUT_DIR}/controlnet{prompt['add']}_cli.png",
 #         "-v",
 #     ]
+
+#     # Remove None values
+#     cli_cmd = [arg for arg in cli_cmd if arg is not None]
+
 #     print(" ".join(cli_cmd))
 #     subprocess.run(cli_cmd, check=True)

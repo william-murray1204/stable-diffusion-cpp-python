@@ -42,10 +42,9 @@ def test_inpainting():
 
 # import subprocess
 
+# from conftest import SD_CPP_CLI
+
 # stable_diffusion = None  # Clear model
-
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
-
 
 # cli_cmd = [
 #     SD_CPP_CLI,

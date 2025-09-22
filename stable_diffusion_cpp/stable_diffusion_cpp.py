@@ -165,7 +165,7 @@ class RNGType(IntEnum):
 
 
 # enum sample_method_t {
-#     EULER_A,
+#     SAMPLE_METHOD_DEFAULT,
 #     EULER,
 #     HEUN,
 #     DPM2,
@@ -177,10 +177,11 @@ class RNGType(IntEnum):
 #     LCM,
 #     DDIM_TRAILING,
 #     TCD,
+#     EULER_A,
 #     SAMPLE_METHOD_COUNT
 # };
 class SampleMethod(IntEnum):
-    EULER_A = 0
+    SAMPLE_METHOD_DEFAULT = 0
     EULER = 1
     HEUN = 2
     DPM2 = 3
@@ -192,7 +193,8 @@ class SampleMethod(IntEnum):
     LCM = 9
     DDIM_TRAILING = 10
     TCD = 11
-    SAMPLE_METHOD_COUNT = 12
+    EULER_A = 12
+    SAMPLE_METHOD_COUNT = 13
 
 
 # enum scheduler_t {
@@ -202,6 +204,8 @@ class SampleMethod(IntEnum):
 #     EXPONENTIAL,
 #     AYS,
 #     GITS,
+#     SGM_UNIFORM,
+#     SIMPLE,
 #     SMOOTHSTEP,
 #     SCHEDULE_COUNT
 # };
@@ -212,8 +216,10 @@ class Scheduler(IntEnum):
     EXPONENTIAL = 3
     AYS = 4
     GITS = 5
-    SMOOTHSTEP = 6
-    SCHEDULE_COUNT = 7
+    SGM_UNIFORM = 6
+    SIMPLE = 7
+    SMOOTHSTEP = 8
+    SCHEDULE_COUNT = 9
 
 
 # // same as enum ggml_type
@@ -309,12 +315,13 @@ class GGMLType(IntEnum):
 # Inference
 # ===========================================
 
+
 # -------------------------------------------
 # sd_ctx_params_t
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* stacked_id_embed_dir; bool vae_decode_only; bool vae_tiling; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool diffusion_conv_direct; bool vae_conv_direct; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool diffusion_conv_direct; bool vae_conv_direct; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -329,9 +336,8 @@ class sd_ctx_params_t(ctypes.Structure):
         ("control_net_path", ctypes.c_char_p),
         ("lora_model_dir", ctypes.c_char_p),
         ("embedding_dir", ctypes.c_char_p),
-        ("stacked_id_embed_dir", ctypes.c_char_p),
+        ("photo_maker_path", ctypes.c_char_p),
         ("vae_decode_only", ctypes.c_bool),
-        ("vae_tiling", ctypes.c_bool),
         ("free_params_immediately", ctypes.c_bool),
         ("n_threads", ctypes.c_int),
         ("wtype", ctypes.c_int),  # GGMLType
@@ -419,6 +425,38 @@ class sd_image_t(ctypes.Structure):
 
 
 # -------------------------------------------
+# sd_pm_params_t
+# -------------------------------------------
+
+
+# typedef struct { sd_image_t* id_images; int id_images_count; const char* id_embed_path; float style_strength; } sd_pm_params_t;  // photo maker
+class sd_pm_params_t(ctypes.Structure):
+    _fields_ = [
+        ("id_images", ctypes.POINTER(sd_image_t)),
+        ("id_images_count", ctypes.c_int),
+        ("id_embed_path", ctypes.c_char_p),
+        ("style_strength", ctypes.c_float),
+    ]
+
+
+# -------------------------------------------
+# sd_tiling_params_t
+# -------------------------------------------
+
+
+# typedef struct { bool enabled; int tile_size_x; int tile_size_y; float target_overlap; float rel_size_x; float rel_size_y; } sd_tiling_params_t;
+class sd_tiling_params_t(ctypes.Structure):
+    _fields_ = [
+        ("enabled", ctypes.c_bool),
+        ("tile_size_x", ctypes.c_int),
+        ("tile_size_y", ctypes.c_int),
+        ("target_overlap", ctypes.c_float),
+        ("rel_size_x", ctypes.c_float),
+        ("rel_size_y", ctypes.c_float),
+    ]
+
+
+# -------------------------------------------
 # sd_slg_params_t
 # -------------------------------------------
 
@@ -454,7 +492,7 @@ class sd_guidance_params_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { sd_guidance_params_t guidance; enum scheduler_t scheduler; enum sample_method_t sample_method; int sample_steps; float eta; } sd_sample_params_t;
+# typedef struct { sd_guidance_params_t guidance; enum scheduler_t scheduler; enum sample_method_t sample_method; int sample_steps; float eta; int shifted_timestep; } sd_sample_params_t;
 class sd_sample_params_t(ctypes.Structure):
     _fields_ = [
         ("guidance", sd_guidance_params_t),
@@ -462,6 +500,7 @@ class sd_sample_params_t(ctypes.Structure):
         ("sample_method", ctypes.c_int),  # SampleMethod
         ("sample_steps", ctypes.c_int),
         ("eta", ctypes.c_float),
+        ("shifted_timestep", ctypes.c_int),
     ]
 
 
@@ -470,7 +509,7 @@ class sd_sample_params_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; float style_strength; bool normalize_input; const char* input_id_images_path; } sd_img_gen_params_t;
+# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; } sd_img_gen_params_t;
 class sd_img_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("prompt", ctypes.c_char_p),
@@ -489,9 +528,8 @@ class sd_img_gen_params_t(ctypes.Structure):
         ("batch_count", ctypes.c_int),
         ("control_image", sd_image_t),
         ("control_strength", ctypes.c_float),
-        ("style_strength", ctypes.c_float),
-        ("normalize_input", ctypes.c_bool),
-        ("input_id_images_path", ctypes.c_char_p),
+        ("pm_params", sd_pm_params_t),
+        ("vae_tiling_params", sd_tiling_params_t),
     ]
 
 
@@ -521,7 +559,7 @@ def generate_image(
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; } sd_vid_gen_params_t;
+# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; } sd_vid_gen_params_t;
 class sd_vid_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("prompt", ctypes.c_char_p),
@@ -529,6 +567,8 @@ class sd_vid_gen_params_t(ctypes.Structure):
         ("clip_skip", ctypes.c_int),
         ("init_image", sd_image_t),
         ("end_image", sd_image_t),
+        ("control_frames", ctypes.POINTER(sd_image_t)),
+        ("control_frames_size", ctypes.c_int),
         ("width", ctypes.c_int),
         ("height", ctypes.c_int),
         ("sample_params", sd_sample_params_t),
@@ -537,6 +577,7 @@ class sd_vid_gen_params_t(ctypes.Structure):
         ("strength", ctypes.c_float),
         ("seed", ctypes.c_int64),
         ("video_frames", ctypes.c_int),
+        ("vace_strength", ctypes.c_float),
     ]
 
 
@@ -564,6 +605,25 @@ def generate_video(
     num_frames_out: num_frames_out_p,
     /,
 ) -> CtypesArray[sd_image_t]: ...
+
+
+# -------------------------------------------
+# sd_get_default_sample_method
+# -------------------------------------------
+
+
+# SD_API enum sample_method_t sd_get_default_sample_method(const sd_ctx_t* sd_ctx);
+@ctypes_function(
+    "sd_get_default_sample_method",
+    [
+        sd_ctx_t_p_ctypes,  # sd_ctx
+    ],
+    ctypes.c_int,  # SampleMethod
+)
+def sd_get_default_sample_method(
+    sd_ctx: sd_ctx_t_p,
+    /,
+) -> Optional[SampleMethod]: ...
 
 
 # -------------------------------------------
