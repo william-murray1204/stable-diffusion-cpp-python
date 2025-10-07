@@ -32,9 +32,8 @@ class StableDiffusion:
         upscaler_path: str = "",
         lora_model_dir: str = "",
         embedding_dir: str = "",
-        stacked_id_embed_dir: str = "",
+        photo_maker_path: str = "",
         vae_decode_only: bool = False,
-        vae_tiling: bool = False,
         n_threads: int = -1,
         wtype: Union[str, GGMLType, int, float] = "default",
         rng_type: Union[str, RNGType, int, float] = "cuda",
@@ -49,9 +48,10 @@ class StableDiffusion:
         chroma_use_t5_mask: bool = False,
         chroma_t5_mask_pad: int = 1,
         flow_shift: float = float("inf"),
+        image_resize_method: str = "crop",
         verbose: bool = True,
     ):
-        """Load a stable-diffusion.cpp model from `model_path`.
+        """Load a stable-diffusion.cpp model from `model_path` or `diffusion_model_path`.
 
         Examples:
             Basic usage
@@ -77,9 +77,8 @@ class StableDiffusion:
             upscaler_path: Path to ESRGAN model (Upscale images after generation).
             lora_model_dir: Lora model directory.
             embedding_dir: Path to embeddings.
-            stacked_id_embed_dir: Path to PHOTOMAKER stacked id embeddings.
+            photo_maker_path: Path to PhotoMaker model.
             vae_decode_only: Process vae in decode only mode.
-            vae_tiling: Process vae in tiles to reduce memory usage.
             n_threads: Number of threads to use for generation (default: half the number of CPUs).
             wtype: The weight type (default: automatically determines the weight type of the model file).
             rng_type: Random number generator.
@@ -94,6 +93,7 @@ class StableDiffusion:
             chroma_use_t5_mask: Use T5 mask for Chroma.
             chroma_t5_mask_pad: T5 mask padding size of Chroma.
             flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
+            image_resize_method: Method to resize images for init, mask, control and reference images ("crop" or "resize").
             verbose: Print verbose output.
 
         Raises:
@@ -118,9 +118,8 @@ class StableDiffusion:
         self.upscaler_path = self._clean_path(upscaler_path)
         self.lora_model_dir = self._clean_path(lora_model_dir)
         self.embedding_dir = self._clean_path(embedding_dir)
-        self.stacked_id_embed_dir = self._clean_path(stacked_id_embed_dir)
+        self.photo_maker_path = self._clean_path(photo_maker_path)
         self.vae_decode_only = vae_decode_only
-        self.vae_tiling = vae_tiling
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
@@ -135,6 +134,7 @@ class StableDiffusion:
         self.chroma_use_t5_mask = chroma_use_t5_mask
         self.chroma_t5_mask_pad = chroma_t5_mask_pad
         self.flow_shift = flow_shift
+        self.image_resize_method = image_resize_method
         self._stack = contextlib.ExitStack()
 
         # Default to half the number of CPUs
@@ -174,9 +174,8 @@ class StableDiffusion:
                     control_net_path=self.control_net_path,
                     lora_model_dir=self.lora_model_dir,
                     embedding_dir=self.embedding_dir,
-                    stacked_id_embed_dir=self.stacked_id_embed_dir,
+                    photo_maker_path=self.photo_maker_path,
                     vae_decode_only=self.vae_decode_only,
-                    vae_tiling=self.vae_tiling,
                     n_threads=self.n_threads,
                     wtype=self.wtype,
                     rng_type=self.rng_type,
@@ -245,9 +244,10 @@ class StableDiffusion:
         guidance: float = 3.5,
         # sample_params
         scheduler: Union[str, Scheduler, int, float] = "default",
-        sample_method: Union[str, SampleMethod, int, float] = "euler_a",
+        sample_method: Union[str, SampleMethod, int, float] = "default",
         sample_steps: int = 20,
         eta: float = 0.0,
+        timestep_shift: int = 0,
         # slg_params
         skip_layers: List[int] = [7, 8, 9],
         skip_layer_start: float = 0.01,
@@ -259,9 +259,13 @@ class StableDiffusion:
         batch_count: int = 1,
         control_image: Optional[Union[Image.Image, str]] = None,
         control_strength: float = 0.9,
-        style_strength: float = 20.0,
-        normalize_input: bool = False,
-        input_id_images_path: str = "",
+        pm_id_embed_path: str = "",
+        pm_id_images: Optional[List[Union[Image.Image, str]]] = None,
+        pm_style_strength: float = 20.0,
+        vae_tiling: bool = False,
+        vae_tile_overlap: float = 0.5,
+        vae_tile_size: Optional[Union[int, str]] = "0x0",
+        vae_relative_tile_size: Optional[Union[float, str]] = "0x0",
         canny: bool = False,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
@@ -285,6 +289,7 @@ class StableDiffusion:
             sample_method: Sampling method.
             sample_steps: Number of sample steps.
             eta: Eta in DDIM, only for DDIM and TCD.
+            timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
             skip_layers: Layers to skip for SLG steps (SLG will be enabled at step int([STEPS]x[START]) and disabled at int([STEPS]x[END])).
             skip_layer_start: SLG enabling point.
             skip_layer_end: SLG disabling point.
@@ -294,10 +299,14 @@ class StableDiffusion:
             batch_count: Number of images to generate.
             control_image: A control condition image path or Pillow Image (Control Net).
             control_strength: Strength to apply Control Net.
-            style_strength: Strength for keeping input identity.
-            normalize_input: Normalize PHOTOMAKER input id images.
-            input_id_images_path: Path to PHOTOMAKER input id images dir.
-            canny: Apply canny edge detection preprocessor to the control_image.
+            pm_id_embed_path: Path to PhotoMaker v2 id embed.
+            pm_id_images: A list of input image paths or Pillow Images for PhotoMaker input identity.
+            pm_style_strength: Strength for keeping PhotoMaker input identity.
+            vae_tiling: Process vae in tiles to reduce memory usage.
+            vae_tile_overlap: Tile overlap for vae tiling, in fraction of tile size.
+            vae_tile_size: Tile size for vae tiling ([X]x[Y] format).
+            vae_relative_tile_size: Relative tile size for vae tiling, in fraction of image size if < 1, in number of tiles per dim if >=1 ([X]x[Y] format) (overrides `vae_tile_size`).
+            canny: Apply canny edge detection preprocessor to the `control_image`.
             upscale_factor: Run the ESRGAN upscaler this many times.
             progress_callback: Callback function to call on each step end.
 
@@ -326,9 +335,11 @@ class StableDiffusion:
             raise ValueError("`sample_steps` must be at least 1")
         if strength < 0.0 or strength > 1.0:
             raise ValueError("`strength` must be in the range [0.0, 1.0]")
+        if timestep_shift < 0 or timestep_shift > 1000:
+            raise ValueError("`timestep_shift` must be in the range [0, 1000]")
 
         # -------------------------------------------
-        # CFG Scale
+        # Set CFG Scale
         # -------------------------------------------
 
         image_cfg_scale = cfg_scale if image_cfg_scale is None else image_cfg_scale
@@ -362,11 +373,35 @@ class StableDiffusion:
         # Reference Images
         # -------------------------------------------
 
-        ref_images_pointer, ref_images_count = self._format_reference_images(ref_images, width, height)
+        ref_images_pointer, ref_images_count = self._create_image_array(ref_images)
+        id_images_pointer, id_images_count = self._create_image_array(pm_id_images)
+
+        # -------------------------------------------
+        # Vae Tiling
+        # -------------------------------------------
+
+        tile_size_x, tile_size_y = self._parse_tile_size(vae_tile_size, as_float=False)
+        rel_size_x, rel_size_y = self._parse_tile_size(vae_relative_tile_size, as_float=True)
 
         # -------------------------------------------
         # Parameters
         # -------------------------------------------
+
+        pm_params = sd_cpp.sd_pm_params_t(
+            id_images=id_images_pointer,
+            id_images_count=id_images_count,
+            id_embed_path=pm_id_embed_path.encode("utf-8"),
+            style_strength=pm_style_strength,
+        )
+
+        vae_tiling_params = sd_cpp.sd_tiling_params_t(
+            enabled=vae_tiling,
+            tile_size_x=tile_size_x,
+            tile_size_y=tile_size_y,
+            target_overlap=vae_tile_overlap,
+            rel_size_x=rel_size_x,
+            rel_size_y=rel_size_y,
+        )
 
         guidance_params = sd_cpp.sd_guidance_params_t(
             txt_cfg=cfg_scale,
@@ -387,6 +422,7 @@ class StableDiffusion:
             sample_method=self._validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method"),
             sample_steps=sample_steps,
             eta=eta,
+            shifted_timestep=timestep_shift,
         )
 
         params = sd_cpp.sd_img_gen_params_t(
@@ -406,9 +442,8 @@ class StableDiffusion:
             batch_count=batch_count,
             control_image=self._format_control_image(control_image, canny, width, height),
             control_strength=control_strength,
-            style_strength=style_strength,
-            normalize_input=normalize_input,
-            input_id_images_path=input_id_images_path.encode("utf-8"),
+            pm_params=pm_params,
+            vae_tiling_params=vae_tiling_params,
         )
 
         with suppress_stdout_stderr(disable=self.verbose):
@@ -460,6 +495,7 @@ class StableDiffusion:
         clip_skip: int = -1,
         init_image: Optional[Union[Image.Image, str]] = None,
         end_image: Optional[Union[Image.Image, str]] = None,
+        control_frames: Optional[List[Union[Image.Image, str]]] = None,
         width: int = 512,
         height: int = 512,
         # ---
@@ -469,9 +505,10 @@ class StableDiffusion:
         guidance: float = 3.5,
         # sample_params
         scheduler: Union[str, Scheduler, int, float] = "default",
-        sample_method: Optional[Union[str, SampleMethod, int, float]] = "euler_a",
+        sample_method: Optional[Union[str, SampleMethod, int, float]] = "default",
         sample_steps: int = 20,
         eta: float = 0.0,
+        timestep_shift: int = 0,
         # slg_params
         skip_layers: List[int] = [7, 8, 9],
         skip_layer_start: float = 0.01,
@@ -484,7 +521,7 @@ class StableDiffusion:
         high_noise_guidance: float = 3.5,
         # high_noise_sample_params
         high_noise_scheduler: Union[str, Scheduler, int, float] = "default",
-        high_noise_sample_method: Union[str, SampleMethod, int, float] = "euler_a",
+        high_noise_sample_method: Union[str, SampleMethod, int, float] = "default",
         high_noise_sample_steps: int = -1,
         high_noise_eta: float = 0.0,
         # high_noise_slg_params
@@ -497,10 +534,11 @@ class StableDiffusion:
         strength: float = 0.75,
         seed: int = 42,
         video_frames: int = 1,
+        vace_strength: int = 1,
         upscale_factor: int = 1,
         progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
-        """Generate a video from an image input.
+        """Generate a video from input images and or a text prompt.
 
         Args:
             prompt: The prompt to render.
@@ -508,6 +546,7 @@ class StableDiffusion:
             clip_skip: Ignore last layers of CLIP network (1 ignores none, 2 ignores one layer, <= 0 represents unspecified, will be 1 for SD1.x, 2 for SD2.x).
             init_image: An input image path or Pillow Image to start the generation.
             end_image: An input image path or Pillow Image to end the generation (required by flf2v).
+            control_frames: A list of control video frame image paths or Pillow Images in the correct order for the video.
             width: Video width, in pixel space.
             height: Video height, in pixel space.
             cfg_scale: Unconditional guidance scale.
@@ -517,6 +556,7 @@ class StableDiffusion:
             sample_method: Sampling method.
             sample_steps: Number of sample steps.
             eta: Eta in DDIM, only for DDIM and TCD.
+            timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
             skip_layers: Layers to skip for SLG steps (SLG will be enabled at step int([STEPS]x[START]) and disabled at int([STEPS]x[END])).
             skip_layer_start: SLG enabling point.
             skip_layer_end: SLG disabling point.
@@ -536,6 +576,7 @@ class StableDiffusion:
             strength: Strength for noising/unnoising.
             seed: RNG seed (uses random seed for < 0).
             video_frames: Number of video frames to generate.
+            vace_strength: Wan VACE strength.
             upscale_factor: Run the ESRGAN upscaler this many times.
             progress_callback: Callback function to call on each step end.
 
@@ -563,6 +604,11 @@ class StableDiffusion:
             raise ValueError("`strength` must be in the range [0.0, 1.0]")
         if video_frames < 1:
             raise ValueError("`video_frames` must be at least 1")
+        if timestep_shift < 0 or timestep_shift > 1000:
+            raise ValueError("`timestep_shift` must be in the range [0, 1000]")
+
+        if high_noise_sample_steps <= 0:
+            high_noise_sample_steps = -1  # Auto
 
         # -------------------------------------------
         # CFG Scale
@@ -597,6 +643,17 @@ class StableDiffusion:
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
         # -------------------------------------------
+        # Control Frames
+        # -------------------------------------------
+
+        control_frames_pointer, control_frames_size = self._create_image_array(
+            control_frames,
+            width=width,
+            height=height,
+            max_images=video_frames,
+        )
+
+        # -------------------------------------------
         #  High Noise Parameters
         # -------------------------------------------
 
@@ -619,6 +676,7 @@ class StableDiffusion:
             sample_method=self._validate_and_set_input(high_noise_sample_method, SAMPLE_METHOD_MAP, "high_noise_sample_method"),
             sample_steps=high_noise_sample_steps,
             eta=high_noise_eta,
+            shifted_timestep=timestep_shift,
         )
 
         # -------------------------------------------
@@ -641,9 +699,13 @@ class StableDiffusion:
         sample_params = sd_cpp.sd_sample_params_t(
             guidance=guidance_params,
             scheduler=self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler"),
-            sample_method=self._validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method"),
+            # sample_method_count is not valid here
+            sample_method=self._validate_and_set_input(
+                sample_method, {k: v for k, v in SAMPLE_METHOD_MAP.items() if k not in ["sample_method_count"]}, "sample_method"
+            ),
             sample_steps=sample_steps,
             eta=eta,
+            shifted_timestep=timestep_shift,
         )
 
         params = sd_cpp.sd_vid_gen_params_t(
@@ -652,6 +714,8 @@ class StableDiffusion:
             clip_skip=clip_skip,
             init_image=self._format_init_image(init_image, width, height),
             end_image=self._format_init_image(end_image, width, height),
+            control_frames=control_frames_pointer,
+            control_frames_size=control_frames_size,
             width=width,
             height=height,
             sample_params=sample_params,
@@ -660,6 +724,7 @@ class StableDiffusion:
             strength=strength,
             seed=seed,
             video_frames=video_frames,
+            vace_strength=vace_strength,
         )
 
         num_results = ctypes.c_int()
@@ -784,7 +849,9 @@ class StableDiffusion:
         if self.upscaler is None:
             raise RuntimeError("Upscaling model not loaded")
 
-        # ==================== Set the callback function ====================
+        # -------------------------------------------
+        # Set the Callback Function
+        # -------------------------------------------
 
         if progress_callback is not None:
 
@@ -799,10 +866,16 @@ class StableDiffusion:
 
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
+        # -------------------------------------------
+        # Ensure List of Images
+        # -------------------------------------------
+
         if not isinstance(images, list):
             images = [images]  # Wrap single image in a list
 
-        # ==================== Upscale images ====================
+        # -------------------------------------------
+        # Upscale Images
+        # -------------------------------------------
 
         upscaled_images = []
         for image in images:
@@ -826,8 +899,74 @@ class StableDiffusion:
         return upscaled_images
 
     # ===========================================
+    # Convert
+    # ===========================================
+
+    def convert(
+        self,
+        input_path: str,
+        vae_path: str = "",
+        output_path: str = "output.gguf",
+        output_type: Union[str, GGMLType, int, float] = "default",
+        tensor_type_rules: str = "",
+    ) -> bool:
+        """Convert a model to gguf format.
+
+        Args:
+            input_path: Path to the input model.
+            vae_path: Path to the vae.
+            output_path: Path to save the converted model.
+            output_type: The weight type (default: auto).
+            tensor_type_rules: Weight type per tensor pattern (example: "^vae\\\\.=f16,model\\\\.=q8_0")
+
+        Returns:
+            A boolean indicating success."""
+
+        # -------------------------------------------
+        # Validation
+        # -------------------------------------------
+
+        output_type = self._validate_and_set_input(output_type, GGML_TYPE_MAP, "output_type")
+
+        # -------------------------------------------
+        # Convert the Model
+        # -------------------------------------------
+
+        with suppress_stdout_stderr(disable=self.verbose):
+            model_converted = sd_cpp.convert(
+                self._clean_path(input_path).encode("utf-8"),
+                self._clean_path(vae_path).encode("utf-8"),
+                self._clean_path(output_path).encode("utf-8"),
+                output_type,
+                tensor_type_rules.encode("utf-8"),
+            )
+
+        return model_converted
+
+    # ===========================================
     # Input Formatting and Validation
     # ===========================================
+
+    # -------------------------------------------
+    # Parse Tile Size
+    # -------------------------------------------
+
+    def _parse_tile_size(self, value: Optional[Union[str, float, int]], as_float: bool = False) -> tuple:
+        if not value:
+            return (0.0, 0.0) if as_float else (0, 0)
+
+        try:
+            if "x" in value:
+                x_str, y_str = value.split("x", 1)
+                x = float(x_str) if as_float else int(x_str)
+                y = float(y_str) if as_float else int(y_str)
+            else:
+                v = float(value) if as_float else int(value)
+                x = y = v
+        except (ValueError, OverflowError):
+            raise ValueError(f"Invalid tile size value: {value}")
+
+        return (x, y)
 
     # -------------------------------------------
     # Format Control Image
@@ -897,28 +1036,40 @@ class StableDiffusion:
             )
 
     # -------------------------------------------
-    # Format Reference Images
+    # Create Image Array
     # -------------------------------------------
 
-    def _format_reference_images(
-        self, ref_images: List[Union[Image.Image, str]], width: int, height: int
+    def _create_image_array(
+        self,
+        images: List[Union[Image.Image, str]],
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        max_images: Optional[int] = None,
     ) -> List[sd_cpp.sd_image_t]:
-        if not isinstance(ref_images, list):
-            ref_images = [ref_images]
+        if not isinstance(images, list):
+            images = [images]
+
+        # Enforce max_images
+        if max_images is not None and max_images > 0:
+            images = images[:max_images]
 
         reference_images = []
-        for img in ref_images:
+        for img in images:
             if not isinstance(img, (str, Image.Image)):
                 # Skip invalid images
                 continue
+
+            if width and height:
+                # Resize if width and height are provided
+                img = self._resize_image(img, width=width, height=height)
 
             # Convert the image to a byte array
             img_ptr = self._image_to_sd_image_t_p(img)
             reference_images.append(img_ptr)
 
         # Create a contiguous array of sd_image_t
-        RefImageArrayType = sd_cpp.sd_image_t * len(reference_images)
-        return RefImageArrayType(*reference_images), len(reference_images)
+        ImageArrayType = sd_cpp.sd_image_t * len(reference_images)
+        return ImageArrayType(*reference_images), len(reference_images)
 
     # -------------------------------------------
     # Validate Dimensions
@@ -959,14 +1110,44 @@ class StableDiffusion:
     # Resize Image
     # -------------------------------------------
 
-    def _resize_image(self, image: Union[Image.Image, str], width: int, height: int) -> Image.Image:
-        """Resize an image to a new width and height."""
+    def _resize_image(
+        self,
+        image: Union[Image.Image, str],
+        width: int,
+        height: int,
+    ) -> Image.Image:
         image, _, _ = self._format_image(image)
 
-        # Resize the image if the width and height are different
-        if image.width != width or image.height != height:
-            image = image.resize((width, height), Image.Resampling.BILINEAR)
-        return image
+        if image.width == width and image.height == height:
+            return image
+
+        if self.image_resize_method == "resize":
+            return image.resize((width, height), Image.Resampling.BILINEAR)
+
+        elif self.image_resize_method == "crop":
+            src_w, src_h = image.width, image.height
+            src_aspect = src_w / src_h
+            dst_aspect = width / height
+
+            # Default crop box is full image
+            crop_x, crop_y = 0, 0
+            crop_w, crop_h = src_w, src_h
+
+            if src_aspect > dst_aspect:
+                # Source is wider than destination -> crop width
+                crop_w = int(src_h * dst_aspect)
+                crop_x = (src_w - crop_w) // 2
+            elif src_aspect < dst_aspect:
+                # Source is taller than destination -> crop height
+                crop_h = int(src_w / dst_aspect)
+                crop_y = (src_h - crop_h) // 2
+
+            # Crop first, then resize
+            image = image.crop((crop_x, crop_y, crop_x + crop_w, crop_y + crop_h))
+            return image.resize((width, height), Image.Resampling.BILINEAR)
+
+        else:
+            raise ValueError(f"Invalid `image_resize_method` '{self.image_resize_method}', must be 'resize' or 'crop'")
 
     # -------------------------------------------
     # Format Image
@@ -980,7 +1161,7 @@ class StableDiffusion:
         """Convert an image path or Pillow Image to a Pillow Image of RGBA or grayscale (inpainting masks) format."""
         # Convert image path to image if str
         if isinstance(image, str):
-            image = Image.open(image)
+            image = Image.open(self._clean_path(image))
 
         if channel == 1:
             # Grayscale the image if channel is 1
@@ -1163,7 +1344,7 @@ RNG_TYPE_MAP = {
 }
 
 SAMPLE_METHOD_MAP = {
-    "euler_a": SampleMethod.EULER_A,
+    "default": SampleMethod.SAMPLE_METHOD_DEFAULT,
     "euler": SampleMethod.EULER,
     "heun": SampleMethod.HEUN,
     "dpm2": SampleMethod.DPM2,
@@ -1175,6 +1356,7 @@ SAMPLE_METHOD_MAP = {
     "lcm": SampleMethod.LCM,
     "ddim_trailing": SampleMethod.DDIM_TRAILING,
     "tcd": SampleMethod.TCD,
+    "euler_a": SampleMethod.EULER_A,
     "sample_method_count": SampleMethod.SAMPLE_METHOD_COUNT,
 }
 
@@ -1185,6 +1367,8 @@ SCHEDULER_MAP = {
     "exponential": Scheduler.EXPONENTIAL,
     "ays": Scheduler.AYS,
     "gits": Scheduler.GITS,
+    "sgm_uniform": Scheduler.SGM_UNIFORM,
+    "simple": Scheduler.SIMPLE,
     "smoothstep": Scheduler.SMOOTHSTEP,
     "schedule_count": Scheduler.SCHEDULE_COUNT,
 }

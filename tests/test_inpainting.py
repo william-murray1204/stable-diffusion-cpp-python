@@ -3,7 +3,7 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
+MODEL_PATH = "F:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
 
 
 INPUT_IMAGE_PATH = "assets\\input.png"
@@ -42,10 +42,9 @@ def test_inpainting():
 
 # import subprocess
 
+# from conftest import SD_CPP_CLI
+
 # stable_diffusion = None  # Clear model
-
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
-
 
 # cli_cmd = [
 #     SD_CPP_CLI,

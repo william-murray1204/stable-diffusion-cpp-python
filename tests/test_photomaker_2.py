@@ -6,11 +6,12 @@ from conftest import OUTPUT_DIR
 from stable_diffusion_cpp import StableDiffusion
 
 MODEL_PATH = "F:\\stable-diffusion\\photomaker\\sdxlUnstableDiffusers_v11.safetensors"
-PHOTO_MAKER_PATH = "F:\\stable-diffusion\\photomaker\\photomaker-v1.safetensors"
+PHOTO_MAKER_PATH = "F:\\stable-diffusion\\photomaker\\photomaker-v2.safetensors"
 VAE_PATH = "F:\\stable-diffusion\\photomaker\\sdxl.vae.safetensors"
 
 
 INPUT_ID_IMAGES_DIR = ".\\assets\\newton_man"
+INPUT_ID_EMBED_PATH = ".\\assets\\newton_man\\id_embeds.bin"
 
 
 PROMPT = "a man img, retro futurism, retro game art style but extremely beautiful, intricate details, masterpiece, best quality, space-themed, cosmic, celestial, stars, galaxies, nebulas, planets, science fiction, highly detailed"
@@ -22,7 +23,7 @@ CFG_SCALE = 5.0
 SAMPLE_METHOD = "euler"
 
 
-def test_photomaker():
+def test_photomaker_2():
 
     stable_diffusion = StableDiffusion(
         photo_maker_path=PHOTO_MAKER_PATH,
@@ -47,6 +48,7 @@ def test_photomaker():
             for f in os.listdir(INPUT_ID_IMAGES_DIR)
             if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
         ],
+        pm_id_embed_path=INPUT_ID_EMBED_PATH,
         progress_callback=callback,
     )
 
@@ -54,7 +56,7 @@ def test_photomaker():
     for i, image in enumerate(photomaker_images):
         pnginfo = PngImagePlugin.PngInfo()
         pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-        image.save(f"{OUTPUT_DIR}/photomaker_{i}.png", pnginfo=pnginfo)
+        image.save(f"{OUTPUT_DIR}/photomaker_2_{i}.png", pnginfo=pnginfo)
 
 
 # ===========================================
@@ -92,8 +94,10 @@ def test_photomaker():
 #     SAMPLE_METHOD,
 #     "--pm-id-images-dir",
 #     INPUT_ID_IMAGES_PATH,
+#     "--pm-id-embed-path",
+#     INPUT_ID_EMBED_PATH,
 #     "--output",
-#     f"{OUTPUT_DIR}/photomaker_cli.png",
+#     f"{OUTPUT_DIR}/photomaker_2_cli.png",
 #     "-v",
 # ]
 # print(" ".join(cli_cmd))

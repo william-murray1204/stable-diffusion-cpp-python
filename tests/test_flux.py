@@ -3,12 +3,12 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-schnell-q3_k.gguf"
-# DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux\\flux1-dev-q8_0.gguf"
-T5XXL_PATH = "C:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
-CLIP_L_PATH = "C:\\stable-diffusion\\flux\\clip_l-q8_0.gguf"
-VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
-LORA_DIR = "C:\\stable-diffusion\\loras"
+DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\flux\\flux1-schnell-q3_k.gguf"
+# DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\flux\\flux1-dev-q8_0.gguf"
+T5XXL_PATH = "F:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
+CLIP_L_PATH = "F:\\stable-diffusion\\flux\\clip_l-q8_0.gguf"
+VAE_PATH = "F:\\stable-diffusion\\flux\\ae-f16.gguf"
+LORA_DIR = "F:\\stable-diffusion\\loras"
 
 
 PROMPTS = [
@@ -20,7 +20,6 @@ PROMPTS = [
 ]
 STEPS = 4
 CFG_SCALE = 1.0
-SAMPLE_METHOD = "euler"
 
 
 def test_flux():
@@ -44,7 +43,6 @@ def test_flux():
             prompt=prompt["prompt"],
             sample_steps=STEPS,
             cfg_scale=CFG_SCALE,
-            sample_method=SAMPLE_METHOD,
             progress_callback=callback,
         )
 
@@ -61,9 +59,9 @@ def test_flux():
 
 # import subprocess
 
-# stable_diffusion = None  # Clear model
+# from conftest import SD_CPP_CLI
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# stable_diffusion = None  # Clear model
 
 # for prompt in PROMPTS:
 #     cli_cmd = [
@@ -83,8 +81,6 @@ def test_flux():
 #         "--cfg-scale",
 #         str(CFG_SCALE),
 #         "--clip-on-cpu",
-#         "--sampling-method",
-#         SAMPLE_METHOD,
 #         "--output",
 #         f"{OUTPUT_DIR}/flux{prompt['add']}_cli.png",
 #         "-v",

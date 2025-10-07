@@ -93,13 +93,14 @@ CMAKE_ARGS="-DSD_CUDA=ON" pip install stable-diffusion-cpp-python
 <details>
 <summary>Using HIPBLAS (ROCm)</summary>
 
-This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure you have the ROCm toolkit installed and that you replace the `-DAMDGPU_TARGETS=` value with that of your GPU architecture.
+This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure you have the ROCm toolkit installed and that you replace the `$GFX_NAME` value with that of your GPU architecture (`gfx1030` for consumer RDNA2 cards for example).
 Windows users refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide and troubleshooting tips.
 
 ```bash
-export GFX_NAME=$(rocminfo | grep -m 1 -E "gfx[^0]{1}" | sed -e 's/ *Name: *//' | awk '{$1=$1; print}' || echo "rocminfo missing")
-echo $GFX_NAME
-CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=$GFX_NAME -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON" pip install stable-diffusion-cpp-python
+if command -v rocminfo; then export GFX_NAME=$(rocminfo | awk '/ *Name: +gfx[1-9]/ {print $2; exit}'); else echo "rocminfo missing!"; fi
+if [ -z "${GFX_NAME}" ]; then echo "Error: Couldn't detect GPU!"; else echo "Building for GPU: ${GFX_NAME}"; fi
+
+CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=$GFX_NAME -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -325,11 +326,12 @@ stable_diffusion = StableDiffusion(
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
     vae_decode_only=True, # Can be True if not generating image to image
+    keep_clip_on_cpu=True, # Prevents black images when using some T5 models
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'flux.cpp'",
       cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
-      sample_method="euler", # euler is recommended for FLUX
+      # sample_method="euler", # euler is recommended for FLUX, set automatically if "default" is specified
 )
 ```
 
@@ -360,12 +362,12 @@ stable_diffusion = StableDiffusion(
     t5xxl_path="../models/t5xxl_fp16.safetensors",
     vae_path="../models/ae.safetensors",
     vae_decode_only=False, # Must be False for FLUX Kontext
+    keep_clip_on_cpu=True, # Prevents black images when using some T5 models
 )
 output = stable_diffusion.generate_image(
       prompt="make the cat blue",
       images=["input.png"],
       cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
-      sample_method="euler", # euler is recommended for FLUX
 )
 ```
 
@@ -386,11 +388,11 @@ stable_diffusion = StableDiffusion(
     vae_path="../models/ae.safetensors",
     vae_decode_only=True, # Can be True if we are not generating image to image
     chroma_use_dit_mask=False,
+    keep_clip_on_cpu=True, # Prevents black images when using some T5 models
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'chroma.cpp'",
       cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
-      sample_method="euler", # euler is recommended for FLUX
 )
 ```
 
@@ -413,6 +415,7 @@ stable_diffusion = StableDiffusion(
     clip_l_path="../models/clip_l.safetensors",
     clip_g_path="../models/clip_g.safetensors",
     t5xxl_path="../models/t5xxl_fp16.safetensors",
+    keep_clip_on_cpu=True, # Prevents black images when using some T5 models
 )
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'Stable diffusion 3.5 Large'",
@@ -442,6 +445,8 @@ output = stable_diffusion.generate_image(
       strength=0.4,
 )
 ```
+
+---
 
 ### <u>Inpainting</u>
 
@@ -473,24 +478,31 @@ Download PhotoMaker model file (in safetensor format) [here](https://huggingface
 In prompt, make sure you have a class word followed by the trigger word `"img"` (hard-coded for now). The class word could be one of `"man, woman, girl, boy"`. If input ID images contain asian faces, add `Asian` before the class word.
 
 ```python
+import os
 from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       model_path="../models/sdxl.vae.safetensors",
       vae_path="../models/sdxl.vae.safetensors",
-      stacked_id_embed_dir="../models/photomaker-v1.safetensors",
+      photo_maker_path="../models/photomaker-v1.safetensors",
       # keep_vae_on_cpu=True,  # If on low memory GPUs (<= 8GB), setting this to True is recommended to get artifact free images
 )
+
+INPUT_ID_IMAGES_DIR = "../assets/newton_man"
 
 output = stable_diffusion.generate_image(
       cfg_scale=5.0, # a cfg_scale of 5.0 is recommended for PhotoMaker
       height=1024,
       width=1024,
-      style_strength=10,  # (0-100)% Default is 20 and 10-20 typically gets good results. Lower ratio means more faithfully following input ID (not necessarily better quality).
+      pm_style_strength=10,  # (0-100)% Default is 20 and 10-20 typically gets good results. Lower ratio means more faithfully following input ID (not necessarily better quality).
       sample_method="euler",
       prompt="a man img, retro futurism, retro game art style but extremely beautiful, intricate details, masterpiece, best quality, space-themed, cosmic, celestial, stars, galaxies, nebulas, planets, science fiction, highly detailed",
       negative_prompt="realistic, photo-realistic, worst quality, greyscale, bad anatomy, bad hands, error, text",
-      input_id_images_path="../assets/newton_man",
+      pm_id_images=[
+            os.path.join(INPUT_ID_IMAGES_DIR, f)
+            for f in os.listdir(INPUT_ID_IMAGES_DIR)
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
+      ],
 )
 ```
 
@@ -504,19 +516,19 @@ Running PMV2 Requires running a python script `face_detect.py` (found here [stab
 python face_detect.py <input_image_dir>
 ```
 
-An `id_embeds.safetensors` file will be generated in `input_images_dir`.
+An `id_embeds.bin` file will be generated in `input_images_dir`.
 
 **Note: This step only needs to be run once — the resulting `id_embeds` can be reused.**
 
-- Run the same command as in version 1 but replacing `photomaker-v1.safetensors` with `photomaker-v2.safetensors`.
+- Run the same command as in version 1 but replacing `photomaker-v1.safetensors` with `photomaker-v2.safetensors` and pass the `id_embeds.bin` path into the `pm_id_embed_path` parameter.
   Download `photomaker-v2.safetensors` from [bssrdf/PhotoMakerV2](https://huggingface.co/bssrdf/PhotoMakerV2).
 - All other parameters from Version 1 remain the same for Version 2.
 
 ---
 
-### <u>WAN Video Generation</u>
+### <u>Wan Video Generation</u>
 
-See [stable-diffusion.cpp WAN download weights](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md#download-weights) for a complete list of WAN models.
+See [stable-diffusion.cpp Wan download weights](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/wan.md#download-weights) for a complete list of Wan models.
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
@@ -526,6 +538,7 @@ stable_diffusion = StableDiffusion(
       t5xxl_path="../models/umt5-xxl-encoder-Q8_0.gguf",
       vae_path="../models/wan_2.1_vae.safetensors",
       flow_shift=3.0,
+      keep_clip_on_cpu=True, # Prevents black images when using some T5 models
 )
 
 output = stable_diffusion.generate_video(
@@ -581,6 +594,47 @@ def save_video_ffmpeg(frames: List[Image.Image], fps: int, out_path: str) -> Non
 save_video_ffmpeg(output, fps=16, out_path="output.mp4")
 ```
 
+#### <u>Wan VACE</u>
+
+Use FFmpeg to extract frames from a video to use as control frames for Wan VACE.
+
+```bash
+mkdir assets/frames
+ffmpeg -i  assets/test.mp4 -qscale:v 1 -vf fps=8 assets/frames/frame_%04d.jpg
+```
+
+```python
+output = stable_diffusion.generate_video(
+      ...
+      # Add control frames for VACE (PIL Images or file paths)
+      control_frames=[
+            os.path.join('assets/frames', f)
+            for f in os.listdir('assets/frames')
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
+      ],
+)
+```
+
+---
+
+### <u>GGUF Model Conversion</u>
+
+You can convert models to GGUF format using the `convert` method.
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion()
+
+stable_diffusion.convert(
+      input_path="../models/v1-5-pruned-emaonly.safetensors",
+      output_path="new_model.gguf",
+      output_type="q8_0",
+)
+```
+
+---
+
 ### <u>Listing GGML model and RNG types, schedulers and sample methods</u>
 
 Access the GGML model and RNG types, schedulers, and sample methods via the following maps:
@@ -624,15 +678,6 @@ c_image = sd_cpp.sd_image_t(
             ctypes.POINTER(ctypes.c_uint8),
       ),
 ) # Create a new C sd_image_t
-
-# Convert a model from safetensors to gguf format
-sd_cpp.convert(
-      "../models/v1-5-pruned-emaonly.safetensors".encode("utf-8"), # input_path
-      "".encode("utf-8"), # vae_path
-      "../models/v1-5-pruned-emaonly.gguf".encode("utf-8"), # output_path
-      sd_cpp.GGMLType.SD_TYPE_Q8_0, # output_type
-      "".encode("utf-8"), # tensor_type_rules
-)
 ```
 
 ## Development

@@ -30,9 +30,8 @@ class _StableDiffusionModel:
         control_net_path: str,
         lora_model_dir: str,
         embedding_dir: str,
-        stacked_id_embed_dir: str,
+        photo_maker_path: str,
         vae_decode_only: bool,
-        vae_tiling: bool,
         n_threads: int,
         wtype: int,
         rng_type: int,
@@ -64,9 +63,8 @@ class _StableDiffusionModel:
             control_net_path=control_net_path.encode("utf-8"),
             lora_model_dir=lora_model_dir.encode("utf-8"),
             embedding_dir=embedding_dir.encode("utf-8"),
-            stacked_id_embed_dir=stacked_id_embed_dir.encode("utf-8"),
+            photo_maker_path=photo_maker_path.encode("utf-8"),
             vae_decode_only=vae_decode_only,
-            vae_tiling=vae_tiling,
             free_params_immediately=False,  # Don't unload model
             n_threads=n_threads,
             wtype=wtype,
@@ -99,7 +97,7 @@ class _StableDiffusionModel:
         if model_path or diffusion_model_path:
             with suppress_stdout_stderr(disable=verbose):
                 # Call function with a pointer to params
-                self.model = sd_cpp.new_sd_ctx(ctypes.byref(self.params))
+                self.model = sd_cpp.new_sd_ctx(ctypes.pointer(self.params))
 
             # Check if the model was loaded successfully
             if self.model is None:

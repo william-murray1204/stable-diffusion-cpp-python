@@ -3,10 +3,10 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux-kontext\\flux1-kontext-dev-Q3_K_S.gguf"
-T5XXL_PATH = "C:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
-CLIP_L_PATH = "C:\\stable-diffusion\\flux\\clip_l-q8_0.gguf"
-VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
+DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\flux-kontext\\flux1-kontext-dev-Q3_K_S.gguf"
+T5XXL_PATH = "F:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
+CLIP_L_PATH = "F:\\stable-diffusion\\flux\\clip_l-q8_0.gguf"
+VAE_PATH = "F:\\stable-diffusion\\flux\\ae-f16.gguf"
 
 
 INPUT_IMAGE_PATHS = [
@@ -58,9 +58,9 @@ def test_edit():
 
 # import subprocess
 
-# stable_diffusion = None  # Clear model
+# from conftest import SD_CPP_CLI
 
-# SD_CPP_CLI = "C:\\Users\\Willi\\Documents\\GitHub\\stable-diffusion.cpp\\build\\bin\\sd"
+# stable_diffusion = None  # Clear model
 
 # cli_cmd = [
 #     SD_CPP_CLI,
