@@ -5,9 +5,9 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-MODEL_PATH = "C:\\stable-diffusion\\photomaker\\sdxlUnstableDiffusers_v11.safetensors"
-PHOTO_MAKER_PATH = "C:\\stable-diffusion\\photomaker\\photomaker-v2.safetensors"
-VAE_PATH = "C:\\stable-diffusion\\photomaker\\sdxl.vae.safetensors"
+MODEL_PATH = "F:\\stable-diffusion\\photomaker\\sdxlUnstableDiffusers_v11.safetensors"
+PHOTO_MAKER_PATH = "F:\\stable-diffusion\\photomaker\\photomaker-v2.safetensors"
+VAE_PATH = "F:\\stable-diffusion\\photomaker\\sdxl.vae.safetensors"
 
 
 INPUT_ID_IMAGES_DIR = ".\\assets\\newton_man"

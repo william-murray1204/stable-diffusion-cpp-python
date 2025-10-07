@@ -2,7 +2,7 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-UPSCALER_MODEL_PATH = "C:\\stable-diffusion\\RealESRGAN_x4plus.pth"
+UPSCALER_MODEL_PATH = "F:\\stable-diffusion\\RealESRGAN_x4plus.pth"
 
 
 INPUT_IMAGES = ["assets\\input.png"]

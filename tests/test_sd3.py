@@ -3,10 +3,10 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-MODEL_PATH = "C:\\stable-diffusion\\sd3.5\\sd3.5_large-q4_k_5_0.gguf"
-CLIP_L_PATH = "C:\\stable-diffusion\\sd3.5\\clip_l.safetensors"
-CLIP_G_PATH = "C:\\stable-diffusion\\sd3.5\\clip_g.safetensors"
-T5XXL_PATH = "C:\\stable-diffusion\\sd3.5\\t5xxl_fp8_e4m3fn.safetensors"
+MODEL_PATH = "F:\\stable-diffusion\\sd3.5\\sd3.5_large-q4_k_5_0.gguf"
+CLIP_L_PATH = "F:\\stable-diffusion\\sd3.5\\clip_l.safetensors"
+CLIP_G_PATH = "F:\\stable-diffusion\\sd3.5\\clip_g.safetensors"
+T5XXL_PATH = "F:\\stable-diffusion\\sd3.5\\t5xxl_fp8_e4m3fn.safetensors"
 
 
 PROMPT = "a lovely cat holding a sign says 'Stable diffusion 3.5 Large'"

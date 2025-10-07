@@ -2,9 +2,9 @@ from conftest import OUTPUT_DIR, save_video_ffmpeg
 
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\wan\\wan2.1_t2v_1.3B_fp16.safetensors"
-T5XXL_PATH = "C:\\stable-diffusion\\wan\\umt5-xxl-encoder-Q8_0.gguf"
-VAE_PATH = "C:\\stable-diffusion\\wan\\wan_2.1_vae.safetensors"
+DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\wan\\wan2.1_t2v_1.3B_fp16.safetensors"
+T5XXL_PATH = "F:\\stable-diffusion\\wan\\umt5-xxl-encoder-Q8_0.gguf"
+VAE_PATH = "F:\\stable-diffusion\\wan\\wan_2.1_vae.safetensors"
 
 
 PROMPT = "a cute dog jumping"

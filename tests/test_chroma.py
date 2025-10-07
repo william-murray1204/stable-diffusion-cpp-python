@@ -3,9 +3,9 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "C:\\stable-diffusion\\flux-chroma\\Chroma1-HD-Flash-Q4_0.gguf"
-T5XXL_PATH = "C:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
-VAE_PATH = "C:\\stable-diffusion\\flux\\ae-f16.gguf"
+DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\flux-chroma\\Chroma1-HD-Flash-Q4_0.gguf"
+T5XXL_PATH = "F:\\stable-diffusion\\flux\\t5xxl_q8_0.gguf"
+VAE_PATH = "F:\\stable-diffusion\\flux\\ae-f16.gguf"
 
 
 PROMPT = "a lovely cat holding a sign says 'chroma.cpp'"

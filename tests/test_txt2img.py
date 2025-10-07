@@ -3,10 +3,10 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-# MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.q8_0.gguf"  # GGUF model wont work for LORAs (GGML_ASSERT error)
-# MODEL_PATH = "C:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
-MODEL_PATH = "C:\\stable-diffusion\\catCitronAnimeTreasure_v10.safetensors"
-LORA_DIR = "C:\\stable-diffusion\\loras"
+# MODEL_PATH = "F:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.q8_0.gguf"  # GGUF model wont work for LORAs (GGML_ASSERT error)
+# MODEL_PATH = "F:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
+MODEL_PATH = "F:\\stable-diffusion\\catCitronAnimeTreasure_v10.safetensors"
+LORA_DIR = "F:\\stable-diffusion\\loras"
 
 
 PROMPTS = [

@@ -3,8 +3,8 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-MODEL_PATH = "C:\\stable-diffusion\\v1-5-pruned-emaonly.safetensors"
-CONTROLNET_MODEL_PATH = "C:\\stable-diffusion\\control_nets\\control_openpose-fp16.safetensors"
+MODEL_PATH = "F:\\stable-diffusion\\v1-5-pruned-emaonly.safetensors"
+CONTROLNET_MODEL_PATH = "F:\\stable-diffusion\\control_nets\\control_openpose-fp16.safetensors"
 
 
 INPUT_IMAGE_PATH = "assets\\input.png"
