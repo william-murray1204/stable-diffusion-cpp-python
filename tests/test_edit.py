@@ -35,7 +35,7 @@ def test_edit():
         print("Completed step: {} of {}".format(step, steps))
 
     # Edit image
-    images = stable_diffusion.generate_image(
+    image = stable_diffusion.generate_image(
         prompt=PROMPT,
         ref_images=INPUT_IMAGE_PATHS,
         sample_steps=STEPS,
@@ -43,13 +43,12 @@ def test_edit():
         image_cfg_scale=IMAGE_CFG_SCALE,
         sample_method=SAMPLE_METHOD,
         progress_callback=callback,
-    )
+    )[0]
 
-    # Save images
-    for i, image in enumerate(images):
-        pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-        image.save(f"{OUTPUT_DIR}/edit_{i}.png", pnginfo=pnginfo)
+    # Save image
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+    image.save(f"{OUTPUT_DIR}/edit.png", pnginfo=pnginfo)
 
 
 # ===========================================

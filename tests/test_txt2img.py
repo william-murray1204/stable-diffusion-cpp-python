@@ -3,19 +3,15 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-# MODEL_PATH = "F:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.q8_0.gguf"  # GGUF model wont work for LORAs (GGML_ASSERT error)
-# MODEL_PATH = "F:\\stable-diffusion\\turbovisionxlSuperFastXLBasedOnNew_tvxlV431Bakedvae.safetensors"
 MODEL_PATH = "F:\\stable-diffusion\\catCitronAnimeTreasure_v10.safetensors"
 LORA_DIR = "F:\\stable-diffusion\\loras"
 
 
 PROMPTS = [
-    # {"add": "_lora", "prompt": "a lovely cat <lora:realism_lora:1>"},  # With LORA
-    # {"add": "", "prompt": "a lovely cat"},  # Without LORA
-    # {"add": "_lora", "prompt": "a cute cat glass statue <lora:glass_statue_v1:1>"},  # With LORA
+    {"add": "_lora", "prompt": "a cute cat glass statue <lora:glass_statue_v1:1>"},  # With LORA
     {"add": "", "prompt": "a cute cat glass statue"},  # Without LORA
 ]
-STEPS = 4
+STEPS = 20
 
 
 def test_txt2img():
@@ -29,18 +25,17 @@ def test_txt2img():
         print("Completed step: {} of {}".format(step, steps))
 
     for prompt in PROMPTS:
-        # Generate images
-        images = stable_diffusion.generate_image(
+        # Generate image
+        image = stable_diffusion.generate_image(
             prompt=prompt["prompt"],
             sample_steps=STEPS,
             progress_callback=callback,
-        )
+        )[0]
 
-        # Save images
-        for i, image in enumerate(images):
-            pnginfo = PngImagePlugin.PngInfo()
-            pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-            image.save(f"{OUTPUT_DIR}/txt2img{prompt['add']}_{i}.png", pnginfo=pnginfo)
+        # Save image
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+        image.save(f"{OUTPUT_DIR}/txt2img{prompt['add']}.png", pnginfo=pnginfo)
 
 
 # ===========================================
