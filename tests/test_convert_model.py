@@ -11,7 +11,7 @@ def test_convert_model():
 
     model_converted = stable_diffusion.convert(
         input_path=MODEL_PATH,
-        output_path=f"{OUTPUT_DIR}/new_model.gguf",
+        output_path=f"{OUTPUT_DIR}/convert_model.gguf",
         output_type="q8_0",
     )
     print("Model converted: ", model_converted)

@@ -137,10 +137,6 @@ def byref(obj: CtypesCData, offset: Optional[int] = None) -> CtypesRef[CtypesCDa
 byref = ctypes.byref  # type: ignore
 
 
-# from ggml-backend.h
-# typedef bool (*ggml_backend_sched_eval_callback)(struct ggml_tensor * t, bool ask, void * user_data);
-ggml_backend_sched_eval_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
-
 # // Abort callback
 # // If not NULL, called before ggml computation
 # // If it returns true, the computation is aborted

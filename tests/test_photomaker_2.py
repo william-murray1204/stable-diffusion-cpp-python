@@ -34,8 +34,8 @@ def test_photomaker_2():
     def callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
-    # Generate images
-    photomaker_images = stable_diffusion.generate_image(
+    # Generate image
+    image = stable_diffusion.generate_image(
         cfg_scale=CFG_SCALE,
         height=HEIGHT,
         width=WIDTH,
@@ -50,13 +50,12 @@ def test_photomaker_2():
         ],
         pm_id_embed_path=INPUT_ID_EMBED_PATH,
         progress_callback=callback,
-    )
+    )[0]
 
-    # Save images
-    for i, image in enumerate(photomaker_images):
-        pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-        image.save(f"{OUTPUT_DIR}/photomaker_2_{i}.png", pnginfo=pnginfo)
+    # Save image
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+    image.save(f"{OUTPUT_DIR}/photomaker_2.png", pnginfo=pnginfo)
 
 
 # ===========================================

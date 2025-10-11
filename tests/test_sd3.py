@@ -30,8 +30,8 @@ def test_sd3():
     def callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
-    # Generate images
-    images = stable_diffusion.generate_image(
+    # Generate image
+    image = stable_diffusion.generate_image(
         prompt=PROMPT,
         height=HEIGHT,
         width=WIDTH,
@@ -39,13 +39,12 @@ def test_sd3():
         sample_method=SAMPLE_METHOD,
         sample_steps=SAMPLE_STEPS,
         progress_callback=callback,
-    )
+    )[0]
 
-    # Save images
-    for i, image in enumerate(images):
-        pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-        image.save(f"{OUTPUT_DIR}/sd3_{i}.png", pnginfo=pnginfo)
+    # Save image
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+    image.save(f"{OUTPUT_DIR}/sd3.png", pnginfo=pnginfo)
 
 
 # ===========================================

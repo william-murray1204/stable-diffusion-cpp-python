@@ -20,20 +20,19 @@ def test_inpainting():
     def callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
-    # Generate images
-    images = stable_diffusion.generate_image(
+    # Generate image
+    image = stable_diffusion.generate_image(
         prompt=PROMPT,
         init_image=INPUT_IMAGE_PATH,
         mask_image=MASK_IMAGE_PATH,
         strength=STRENGTH,
         progress_callback=callback,
-    )
+    )[0]
 
-    # Save images
-    for i, image in enumerate(images):
-        pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-        image.save(f"{OUTPUT_DIR}/inpainting_{i}.png", pnginfo=pnginfo)
+    # Save image
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+    image.save(f"{OUTPUT_DIR}/inpainting.png", pnginfo=pnginfo)
 
 
 # ===========================================

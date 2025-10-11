@@ -93,14 +93,13 @@ CMAKE_ARGS="-DSD_CUDA=ON" pip install stable-diffusion-cpp-python
 <details>
 <summary>Using HIPBLAS (ROCm)</summary>
 
-This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure you have the ROCm toolkit installed and that you replace the `$GFX_NAME` value with that of your GPU architecture (`gfx1030` for consumer RDNA2 cards for example).
-Windows users refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide and troubleshooting tips.
+This provides BLAS acceleration using the ROCm cores of your AMD GPU. Make sure you have the ROCm toolkit installed and that you replace the `$GFX_NAME` value with that of your GPU architecture (`gfx1030` for consumer RDNA2 cards for example).Windows users refer to [docs/hipBLAS_on_Windows.md](docs%2FhipBLAS_on_Windows.md) for a comprehensive guide and troubleshooting tips.
 
 ```bash
 if command -v rocminfo; then export GFX_NAME=$(rocminfo | awk '/ *Name: +gfx[1-9]/ {print $2; exit}'); else echo "rocminfo missing!"; fi
 if [ -z "${GFX_NAME}" ]; then echo "Error: Couldn't detect GPU!"; else echo "Building for GPU: ${GFX_NAME}"; fi
 
-CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DAMDGPU_TARGETS=$GFX_NAME -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON" pip install stable-diffusion-cpp-python
+CMAKE_ARGS="-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DSD_HIPBLAS=ON -DCMAKE_BUILD_TYPE=Release -DGPU_TARGETS=$GFX_NAME -DAMDGPU_TARGETS=$GFX_NAME -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -143,18 +142,6 @@ CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" pip i
 
 # Option 2: Use FP16
 CMAKE_ARGS="-DSD_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DGGML_SYCL_F16=ON" pip install stable-diffusion-cpp-python
-```
-
-</details>
-
-<!-- Flash Attention -->
-<details>
-<summary>Using Flash Attention</summary>
-
-Enabling flash attention reduces memory usage by at least 400 MB. At the moment, it is not supported when CUDA (CUBLAS) is enabled because the kernel implementation is missing.
-
-```bash
-CMAKE_ARGS="-DSD_FLASH_ATTN=ON" pip install stable-diffusion-cpp-python
 ```
 
 </details>
@@ -249,6 +236,28 @@ _(Note: Don't forget to include `LD_LIBRARY_PATH=/vendor/lib64` in your command 
 ### Upgrading and Reinstalling
 
 To upgrade and rebuild `stable-diffusion-cpp-python` add `--upgrade --force-reinstall --no-cache-dir` flags to the `pip install` command to ensure the package is rebuilt from source.
+
+### Using Flash Attention
+
+Enabling flash attention for the diffusion model reduces memory usage by varying amounts of MB, e.g.:
+
+- **flux 768x768** ~600mb
+- **SD2 768x768** ~1400mb
+
+For most backends, it slows things down, but for cuda it generally speeds it up too.
+At the moment, it is only supported for some models and some backends (like `cpu`, `cuda/rocm` and `metal`).
+
+Run by passing `diffusion_flash_attn=True` to the `StableDiffusion` class and watch for:
+
+```log
+[INFO] stable-diffusion.cpp:312  - Using flash attention in the diffusion model
+```
+
+and the compute buffer shrink in the debug log:
+
+```log
+[DEBUG] ggml_extend.hpp:1004 - flux compute buffer size: 650.00 MB(VRAM)
+```
 
 ## High-level API
 

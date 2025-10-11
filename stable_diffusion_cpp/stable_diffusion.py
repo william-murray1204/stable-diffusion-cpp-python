@@ -977,10 +977,7 @@ class StableDiffusion:
     ) -> sd_cpp.sd_image_t:
         """Convert an image path or Pillow Image to an C sd_image_t image."""
 
-        if not isinstance(control_image, (str, Image.Image)) or not self.control_net_path:
-            if not self.control_net_path:
-                log_event(1, "`control_net_path` not set. Skipping control image")
-
+        if not isinstance(control_image, (str, Image.Image)):
             # Return an empty sd_image_t
             return self._c_uint8_to_sd_image_t_p(
                 image=None,

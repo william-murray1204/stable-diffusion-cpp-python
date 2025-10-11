@@ -25,19 +25,18 @@ def test_controlnet():
         print("Completed step: {} of {}".format(step, steps))
 
     for prompt in PROMPTS:
-        # Generate images
-        images = stable_diffusion.generate_image(
+        # Generate image
+        image = stable_diffusion.generate_image(
             prompt=prompt["prompt"],
             control_image=INPUT_IMAGE_PATH,
             canny=prompt["canny"],
             progress_callback=callback,
-        )
+        )[0]
 
-        # Save images
-        for i, image in enumerate(images):
-            pnginfo = PngImagePlugin.PngInfo()
-            pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
-            image.save(f"{OUTPUT_DIR}/controlnet{prompt['add']}_{i}.png", pnginfo=pnginfo)
+        # Save image
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("Parameters", ", ".join([f"{k.replace('_', ' ').title()}: {v}" for k, v in image.info.items()]))
+        image.save(f"{OUTPUT_DIR}/controlnet{prompt['add']}.png", pnginfo=pnginfo)
 
 
 # ===========================================
