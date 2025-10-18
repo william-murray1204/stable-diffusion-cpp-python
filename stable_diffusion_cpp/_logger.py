@@ -27,7 +27,7 @@ def sd_log_callback(
     data: ctypes.c_void_p,
 ):
     if logger.level <= SD_LOG_LEVEL_TO_LOGGING_LEVEL[level]:
-        print(text.decode("utf-8"), end="", flush=True, file=sys.stderr)
+        print(text.decode("utf-8", errors="replace"), end="", flush=True, file=sys.stderr)
 
 
 stable_diffusion_cpp.sd_set_log_callback(sd_log_callback, ctypes.c_void_p(0))

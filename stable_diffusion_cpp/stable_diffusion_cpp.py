@@ -218,6 +218,25 @@ class Scheduler(IntEnum):
     SCHEDULE_COUNT = 9
 
 
+# enum prediction_t {
+#     DEFAULT_PRED,
+#     EPS_PRED,
+#     V_PRED,
+#     EDM_V_PRED,
+#     SD3_FLOW_PRED,
+#     FLUX_FLOW_PRED,
+#     PREDICTION_COUNT
+# };
+class Prediction(IntEnum):
+    DEFAULT_PRED = 0
+    EPS_PRED = 1
+    V_PRED = 2
+    EDM_V_PRED = 3
+    SD3_FLOW_PRED = 4
+    FLUX_FLOW_PRED = 5
+    PREDICTION_COUNT = 6
+
+
 # // same as enum ggml_type
 # enum sd_type_t {
 #     SD_TYPE_F32  = 0,
@@ -317,7 +336,7 @@ class GGMLType(IntEnum):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool diffusion_conv_direct; bool vae_conv_direct; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* qwen2vl_path; const char* qwen2vl_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum prediction_t prediction; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -325,6 +344,8 @@ class sd_ctx_params_t(ctypes.Structure):
         ("clip_g_path", ctypes.c_char_p),
         ("clip_vision_path", ctypes.c_char_p),
         ("t5xxl_path", ctypes.c_char_p),
+        ("qwen2vl_path", ctypes.c_char_p),
+        ("qwen2vl_vision_path", ctypes.c_char_p),
         ("diffusion_model_path", ctypes.c_char_p),
         ("high_noise_diffusion_model_path", ctypes.c_char_p),
         ("vae_path", ctypes.c_char_p),
@@ -338,6 +359,7 @@ class sd_ctx_params_t(ctypes.Structure):
         ("n_threads", ctypes.c_int),
         ("wtype", ctypes.c_int),  # GGMLType
         ("rng_type", ctypes.c_int),  # RNGType
+        ("prediction", ctypes.c_int),  # Prediction
         ("offload_params_to_cpu", ctypes.c_bool),
         ("keep_clip_on_cpu", ctypes.c_bool),
         ("keep_control_net_on_cpu", ctypes.c_bool),
@@ -345,6 +367,7 @@ class sd_ctx_params_t(ctypes.Structure):
         ("diffusion_flash_attn", ctypes.c_bool),
         ("diffusion_conv_direct", ctypes.c_bool),
         ("vae_conv_direct", ctypes.c_bool),
+        ("force_sdxl_vae_conv_scale", ctypes.c_bool),
         ("chroma_use_dit_mask", ctypes.c_bool),
         ("chroma_use_t5_mask", ctypes.c_bool),
         ("chroma_t5_mask_pad", ctypes.c_int),
@@ -705,6 +728,25 @@ def upscale(
 
 
 # -------------------------------------------
+# get_upscale_factor
+# -------------------------------------------
+
+
+# SD_API int get_upscale_factor(upscaler_ctx_t* upscaler_ctx);
+@ctypes_function(
+    "get_upscale_factor",
+    [
+        upscaler_ctx_t_p_ctypes,  # upscaler_ctx
+    ],
+    ctypes.c_int,
+)
+def get_upscale_factor(
+    upscaler_ctx: upscaler_ctx_t_p,
+    /,
+) -> int: ...
+
+
+# -------------------------------------------
 # convert
 # -------------------------------------------
 
@@ -736,32 +778,28 @@ def convert(
 # -------------------------------------------
 
 
-# SD_API uint8_t* preprocess_canny(uint8_t* img, int width, int height, float high_threshold, float low_threshold, float weak, float strong, bool inverse);
+# SD_API bool preprocess_canny(sd_image_t image, float high_threshold, float low_threshold, float weak, float strong, bool inverse);
 @ctypes_function(
     "preprocess_canny",
     [
-        ctypes.POINTER(ctypes.c_uint8),  # img
-        ctypes.c_int,  # width
-        ctypes.c_int,  # height
+        sd_image_t,  # image
         ctypes.c_float,  # high_threshold
         ctypes.c_float,  # low_threshold
         ctypes.c_float,  # weak
         ctypes.c_float,  # strong
         ctypes.c_bool,  # inverse
     ],
-    ctypes.POINTER(ctypes.c_uint8),
+    ctypes.c_bool,
 )
 def preprocess_canny(
-    img: CtypesArray[ctypes.c_uint8],
-    width: int,
-    height: int,
+    image: sd_image_t,
     high_threshold: float,
     low_threshold: float,
     weak: float,
     strong: float,
     inverse: bool,
     /,
-) -> CtypesArray[ctypes.c_uint8]: ...
+) -> bool: ...
 
 
 # ===========================================

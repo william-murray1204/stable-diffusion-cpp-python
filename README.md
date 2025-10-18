@@ -375,7 +375,7 @@ stable_diffusion = StableDiffusion(
 )
 output = stable_diffusion.generate_image(
       prompt="make the cat blue",
-      images=["input.png"],
+      ref_images=["input.png"],
       cfg_scale=1.0, # a cfg_scale of 1 is recommended for FLUX
 )
 ```
@@ -480,7 +480,6 @@ output = stable_diffusion.generate_image(
 You can use [PhotoMaker](https://github.com/TencentARC/PhotoMaker) to personalize generated images with your own ID.
 
 **NOTE**, currently PhotoMaker **ONLY** works with **SDXL** (any SDXL model files will work).
-The VAE in SDXL encounters NaN issues. You can find a fixed VAE here: [SDXL VAE FP16 Fix](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/sdxl_vae.safetensors).
 
 Download PhotoMaker model file (in safetensor format) [here](https://huggingface.co/bssrdf/PhotoMaker). The official release of the model file (in .bin format) does not work with `stablediffusion.cpp`.
 
@@ -532,6 +531,75 @@ An `id_embeds.bin` file will be generated in `input_images_dir`.
 - Run the same command as in version 1 but replacing `photomaker-v1.safetensors` with `photomaker-v2.safetensors` and pass the `id_embeds.bin` path into the `pm_id_embed_path` parameter.
   Download `photomaker-v2.safetensors` from [bssrdf/PhotoMakerV2](https://huggingface.co/bssrdf/PhotoMakerV2).
 - All other parameters from Version 1 remain the same for Version 2.
+
+---
+
+### <u>QWEN Image</u>
+
+Download the weights from the links below:
+
+- Download `Qwen Image`
+  - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/tree/main/split_files/diffusion_models
+  - gguf: https://huggingface.co/QuantStack/Qwen-Image-GGUF/tree/main
+- Download `vae`
+  - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/tree/main/split_files/vae
+- Download `qwen_2.5_vl 7b`
+  - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/tree/main/split_files/text_encoders
+  - gguf: https://huggingface.co/mradermacher/Qwen2.5-VL-7B-Instruct-GGUF/tree/main
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/qwen-image-Q8_0.gguf",
+      qwen2vl_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
+      vae_path="../models/qwen_image_vae.safetensors",
+      offload_params_to_cpu=True,
+      flow_shift=3,
+)
+
+output = stable_diffusion.generate_image(
+      prompt='一个穿着"QWEN"标志的T恤的中国美女正拿着黑色的马克笔面相镜头微笑。她身后的玻璃板上手写体写着 “一、Qwen-Image的技术路线： 探索视觉生成基础模型的极限，开创理解与生成一体化的未来。二、Qwen-Image的模型特色：1、复杂文字渲染。支持中英渲染、自动布局； 2、精准图像编辑。支持文字编辑、物体增减、风格变换。三、Qwen-Image的未来愿景：赋能专业内容创作、助力生成式AI发展。”',
+      cfg_scale=2.5,
+      sample_method='euler',
+)
+```
+
+#### <u>QWEN Image Edit</u>
+
+Download the weights from the links below:
+
+- Download `Qwen Image Edit`
+  - Qwen Image Edit
+    - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/tree/main/split_files/diffusion_models
+    - gguf: https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/tree/main
+  - Qwen Image Edit 2509
+    - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/tree/main/split_files/diffusion_models
+    - gguf: https://huggingface.co/QuantStack/Qwen-Image-Edit-2509-GGUF/tree/main
+- Download `vae`
+  - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/tree/main/split_files/vae
+- Download `qwen_2.5_vl 7b`
+  - safetensors: https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/tree/main/split_files/text_encoders
+  - gguf: https://huggingface.co/mradermacher/Qwen2.5-VL-7B-Instruct-GGUF/tree/main
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/Qwen_Image_Edit-Q8_0.gguf",
+      qwen2vl_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
+      vae_path="../models/qwen_image_vae.safetensors",
+      offload_params_to_cpu=True,
+      flow_shift=3,
+)
+
+output = stable_diffusion.generate_image(
+      prompt="make the cat blue",
+      ref_images=["input.png"],
+      cfg_scale=2.5,
+      sample_method='euler',
+)
+```
 
 ---
 

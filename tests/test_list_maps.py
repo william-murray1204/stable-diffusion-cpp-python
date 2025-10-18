@@ -5,6 +5,7 @@ from stable_diffusion_cpp import (
     GGML_TYPE_MAP,
     SCHEDULER_MAP,
     SAMPLE_METHOD_MAP,
+    PREDICTION_MAP,
 )
 
 
@@ -14,6 +15,7 @@ def test_list_maps():
         "RNG types": RNG_TYPE_MAP,
         "Schedulers": SCHEDULER_MAP,
         "Sample methods": SAMPLE_METHOD_MAP,
+        "Prediction types": PREDICTION_MAP,
     }
 
     with open(f"{OUTPUT_DIR}/list_maps.txt", "w") as f:
