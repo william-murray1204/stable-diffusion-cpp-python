@@ -11,7 +11,7 @@ import stable_diffusion_cpp as sd_cpp
 from ._utils import suppress_stdout_stderr
 from ._logger import log_event, set_verbose
 from ._internals import _UpscalerModel, _StableDiffusionModel
-from stable_diffusion_cpp import RNGType, GGMLType, Scheduler, SampleMethod
+from stable_diffusion_cpp import RNGType, GGMLType, Scheduler, SampleMethod, Prediction
 
 
 class StableDiffusion:
@@ -24,6 +24,8 @@ class StableDiffusion:
         clip_g_path: str = "",
         clip_vision_path: str = "",
         t5xxl_path: str = "",
+        qwen2vl_path: str = "",
+        qwen2vl_vision_path: str = "",
         diffusion_model_path: str = "",
         high_noise_diffusion_model_path: str = "",
         vae_path: str = "",
@@ -37,6 +39,7 @@ class StableDiffusion:
         n_threads: int = -1,
         wtype: Union[str, GGMLType, int, float] = "default",
         rng_type: Union[str, RNGType, int, float] = "cuda",
+        prediction: Union[str, Prediction, int, float] = "default",
         offload_params_to_cpu: bool = False,
         keep_clip_on_cpu: bool = False,
         keep_control_net_on_cpu: bool = False,
@@ -44,6 +47,7 @@ class StableDiffusion:
         diffusion_flash_attn: bool = False,
         diffusion_conv_direct: bool = False,
         vae_conv_direct: bool = False,
+        force_sdxl_vae_conv_scale: bool = False,
         chroma_use_dit_mask: bool = True,
         chroma_use_t5_mask: bool = False,
         chroma_t5_mask_pad: int = 1,
@@ -69,12 +73,14 @@ class StableDiffusion:
             clip_g_path: Path to the clip-g text encoder.
             clip_vision_path: Path to the clip-vision encoder.
             t5xxl_path: Path to the t5xxl text encoder.
+            qwen2vl_path: Path to the qwen2vl text encoder.
+            qwen2vl_vision_path: Path to the qwen2vl vit.
             diffusion_model_path: Path to the standalone diffusion model.
             high_noise_diffusion_model_path: Path to the standalone high noise diffusion model.
             vae_path: Path to the vae.
             taesd_path: Path to the taesd. Using Tiny AutoEncoder for fast decoding (low quality).
             control_net_path: Path to the Control Net model.
-            upscaler_path: Path to ESRGAN model (Upscale images after generation).
+            upscaler_path: Path to ESRGAN model (upscale images separately or after generation).
             lora_model_dir: Lora model directory.
             embedding_dir: Path to embeddings.
             photo_maker_path: Path to PhotoMaker model.
@@ -82,6 +88,7 @@ class StableDiffusion:
             n_threads: Number of threads to use for generation (default: half the number of CPUs).
             wtype: The weight type (default: automatically determines the weight type of the model file).
             rng_type: Random number generator.
+            prediction: Prediction type override.
             offload_params_to_cpu: Place the weights in RAM to save VRAM, and automatically load them into VRAM when needed.
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_on_cpu: Keep Control Net in CPU (for low vram).
@@ -89,6 +96,7 @@ class StableDiffusion:
             diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly). May lower quality or crash if backend not supported.
             diffusion_conv_direct: Use Conv2d direct in the diffusion model. May crash if backend not supported.
             vae_conv_direct: Use Conv2d direct in the vae model (should improve performance). May crash if backend not supported.
+            force_sdxl_vae_conv_scale: Force use of conv scale on SDXL vae.
             chroma_use_dit_mask: Use DiT mask for Chroma.
             chroma_use_t5_mask: Use T5 mask for Chroma.
             chroma_t5_mask_pad: T5 mask padding size of Chroma.
@@ -110,6 +118,8 @@ class StableDiffusion:
         self.clip_g_path = self._clean_path(clip_g_path)
         self.clip_vision_path = self._clean_path(clip_vision_path)
         self.t5xxl_path = self._clean_path(t5xxl_path)
+        self.qwen2vl_path = self._clean_path(qwen2vl_path)
+        self.qwen2vl_vision_path = self._clean_path(qwen2vl_vision_path)
         self.diffusion_model_path = self._clean_path(diffusion_model_path)
         self.high_noise_diffusion_model_path = self._clean_path(high_noise_diffusion_model_path)
         self.vae_path = self._clean_path(vae_path)
@@ -123,6 +133,7 @@ class StableDiffusion:
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
+        self.prediction = prediction
         self.offload_params_to_cpu = offload_params_to_cpu
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_on_cpu = keep_control_net_on_cpu
@@ -130,6 +141,7 @@ class StableDiffusion:
         self.diffusion_flash_attn = diffusion_flash_attn
         self.diffusion_conv_direct = diffusion_conv_direct
         self.vae_conv_direct = vae_conv_direct
+        self.force_sdxl_vae_conv_scale = force_sdxl_vae_conv_scale
         self.chroma_use_dit_mask = chroma_use_dit_mask
         self.chroma_use_t5_mask = chroma_use_t5_mask
         self.chroma_t5_mask_pad = chroma_t5_mask_pad
@@ -154,6 +166,7 @@ class StableDiffusion:
 
         self.wtype = self._validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
         self.rng_type = self._validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
+        self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
 
         # -------------------------------------------
         # SD Model Loading
@@ -167,6 +180,8 @@ class StableDiffusion:
                     clip_g_path=self.clip_g_path,
                     clip_vision_path=self.clip_vision_path,
                     t5xxl_path=self.t5xxl_path,
+                    qwen2vl_path=self.qwen2vl_path,
+                    qwen2vl_vision_path=self.qwen2vl_vision_path,
                     diffusion_model_path=self.diffusion_model_path,
                     high_noise_diffusion_model_path=self.high_noise_diffusion_model_path,
                     vae_path=self.vae_path,
@@ -179,6 +194,7 @@ class StableDiffusion:
                     n_threads=self.n_threads,
                     wtype=self.wtype,
                     rng_type=self.rng_type,
+                    prediction=self.prediction,
                     offload_params_to_cpu=self.offload_params_to_cpu,
                     keep_clip_on_cpu=self.keep_clip_on_cpu,
                     keep_control_net_on_cpu=self.keep_control_net_on_cpu,
@@ -186,6 +202,7 @@ class StableDiffusion:
                     diffusion_flash_attn=self.diffusion_flash_attn,
                     diffusion_conv_direct=self.diffusion_conv_direct,
                     vae_conv_direct=self.vae_conv_direct,
+                    force_sdxl_vae_conv_scale=self.force_sdxl_vae_conv_scale,
                     chroma_use_dit_mask=self.chroma_use_dit_mask,
                     chroma_use_t5_mask=self.chroma_use_t5_mask,
                     chroma_t5_mask_pad=self.chroma_t5_mask_pad,
@@ -445,6 +462,9 @@ class StableDiffusion:
             pm_params=pm_params,
             vae_tiling_params=vae_tiling_params,
         )
+
+        # Log system info
+        log_event(level=2, message=sd_cpp.sd_get_system_info().decode("utf-8"))
 
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
@@ -727,6 +747,9 @@ class StableDiffusion:
             vace_strength=vace_strength,
         )
 
+        # Log system info
+        log_event(level=2, message=sd_cpp.sd_get_system_info().decode("utf-8"))
+
         num_results = ctypes.c_int()
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate the video
@@ -781,8 +804,8 @@ class StableDiffusion:
         weak: float = 0.8,
         strong: float = 1.0,
         inverse: bool = False,
-        output_as_c_uint8: bool = False,
-    ) -> Image.Image:
+        output_as_sd_image_t: bool = False,
+    ) -> Union[Image.Image, sd_cpp.sd_image_t]:
         """Apply canny edge detection to an input image.
         Width and height determined automatically.
 
@@ -793,20 +816,18 @@ class StableDiffusion:
             weak: Weak edge thickness.
             strong: Strong edge thickness.
             inverse: Invert the edge detection.
-            output_as_c_uint8: Return the output as a c_types uint8 pointer.
+            output_as_sd_image_t: Return the output as a c_types sd_image_t pointer.
 
         Returns:
             A Pillow Image."""
 
-        # Convert the image to a C uint8 pointer
-        data, width, height = self._cast_image(image)
+        # Convert the image to a byte array
+        image_bytes = self._image_to_sd_image_t_p(image)
 
         with suppress_stdout_stderr(disable=self.verbose):
-            # Run the preprocess canny
-            c_image = sd_cpp.preprocess_canny(
-                data,
-                int(width),
-                int(height),
+            # Apply the preprocess canny
+            sd_cpp.preprocess_canny(
+                image_bytes,
                 high_threshold,
                 low_threshold,
                 weak,
@@ -814,16 +835,13 @@ class StableDiffusion:
                 inverse,
             )
 
-        # Return the c_image if output_as_c_uint8 (for running inside txt2img/img2img pipeline)
-        if output_as_c_uint8:
-            return c_image
+        # Return the sd_image_t if output_as_sd_image_t (for running inside txt2img/img2img pipeline)
+        if output_as_sd_image_t:
+            return image_bytes
 
-        # Calculate the size of the data buffer (channels * width * height)
-        buffer_size = 3 * width * height
-
-        # Convert c_image to a Pillow Image
-        image = self._c_array_to_bytes(c_image, buffer_size)
-        image = self._bytes_to_image(image, width, height)
+        # Load the image from the C sd_image_t and convert it to a PIL Image
+        image = self._dereference_sd_image_t_p(image_bytes)
+        image = self._bytes_to_image(image["data"], image["width"], image["height"])
         return image
 
     # ===========================================
@@ -876,6 +894,9 @@ class StableDiffusion:
         # -------------------------------------------
         # Upscale Images
         # -------------------------------------------
+
+        # Log system info
+        log_event(level=2, message=sd_cpp.sd_get_system_info().decode("utf-8"))
 
         upscaled_images = []
         for image in images:
@@ -932,6 +953,9 @@ class StableDiffusion:
         # Convert the Model
         # -------------------------------------------
 
+        # Log system info
+        log_event(level=2, message=sd_cpp.sd_get_system_info().decode("utf-8"))
+
         with suppress_stdout_stderr(disable=self.verbose):
             model_converted = sd_cpp.convert(
                 self._clean_path(input_path).encode("utf-8"),
@@ -987,10 +1011,9 @@ class StableDiffusion:
             )
 
         if canny:
-            # Convert Pillow Image to canny edge detection image then format into C sd_image_t
+            # Apply canny edge detection preprocessor to Pillow Image
             image, width, height = self._format_image(control_image)
-            image = self.preprocess_canny(image, output_as_c_uint8=True)
-            image = self._c_uint8_to_sd_image_t_p(image, width, height)
+            image = self.preprocess_canny(image, output_as_sd_image_t=True)
         else:
             # Convert Pillow Image to C sd_image_t
             image = self._image_to_sd_image_t_p(control_image)
@@ -1368,6 +1391,16 @@ SCHEDULER_MAP = {
     "simple": Scheduler.SIMPLE,
     "smoothstep": Scheduler.SMOOTHSTEP,
     "schedule_count": Scheduler.SCHEDULE_COUNT,
+}
+
+PREDICTION_MAP = {
+    "default": Prediction.DEFAULT_PRED,
+    "eps": Prediction.EPS_PRED,
+    "v": Prediction.V_PRED,
+    "edm_v": Prediction.EDM_V_PRED,
+    "sd3_flow": Prediction.SD3_FLOW_PRED,
+    "flux_flow": Prediction.FLUX_FLOW_PRED,
+    "prediction_count": Prediction.PREDICTION_COUNT,
 }
 
 GGML_TYPE_MAP = {

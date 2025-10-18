@@ -90,7 +90,7 @@ def test_photomaker():
 #     "--sampling-method",
 #     SAMPLE_METHOD,
 #     "--pm-id-images-dir",
-#     INPUT_ID_IMAGES_PATH,
+#     INPUT_ID_IMAGES_DIR,
 #     "--output",
 #     f"{OUTPUT_DIR}/photomaker_cli.png",
 #     "-v",
