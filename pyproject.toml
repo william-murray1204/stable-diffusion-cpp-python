@@ -59,7 +59,7 @@ line-length = 130
 
 [tool.isort]
 profile = "black"
-known_local_folder = ["stable_diffusion_cpp"]
+known_local_folder = ["stable_diffusion_cpp", "tests"]
 remove_redundant_aliases = true
 length_sort = true
 

@@ -18,14 +18,14 @@ def generate_on_gfx(hip_visible_devices: int, hsa_override_gfx_version: str):
 
     stable_diffusion = StableDiffusion(model_path=MODEL_PATH)
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("{} - Completed step: {} of {}".format(hsa_override_gfx_version, step, steps))
 
     # Generate image
     image = stable_diffusion.generate_image(
         prompt=PROMPT,
         sample_steps=STEPS,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image

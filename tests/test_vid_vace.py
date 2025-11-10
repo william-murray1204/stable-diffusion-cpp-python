@@ -31,7 +31,7 @@ def test_vid_vace():
         keep_clip_on_cpu=True,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate video frames
@@ -49,7 +49,7 @@ def test_vid_vace():
             for f in os.listdir(VIDEO_FRAMES_DIR)
             if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
         ],
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )
 
     # Save video

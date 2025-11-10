@@ -326,6 +326,21 @@ class GGMLType(IntEnum):
     SD_TYPE_COUNT = 40
 
 
+# enum preview_t {
+#     PREVIEW_NONE,
+#     PREVIEW_PROJ,
+#     PREVIEW_TAE,
+#     PREVIEW_VAE,
+#     PREVIEW_COUNT
+# };
+class Preview(IntEnum):
+    PREVIEW_NONE = 0
+    PREVIEW_PROJ = 1
+    PREVIEW_TAE = 2
+    PREVIEW_VAE = 3
+    PREVIEW_COUNT = 4
+
+
 # ===========================================
 # Inference
 # ===========================================
@@ -336,7 +351,7 @@ class GGMLType(IntEnum):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* qwen2vl_path; const char* qwen2vl_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum prediction_t prediction; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* qwen2vl_path; const char* qwen2vl_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum prediction_t prediction; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -365,6 +380,7 @@ class sd_ctx_params_t(ctypes.Structure):
         ("keep_control_net_on_cpu", ctypes.c_bool),
         ("keep_vae_on_cpu", ctypes.c_bool),
         ("diffusion_flash_attn", ctypes.c_bool),
+        ("tae_preview_only", ctypes.c_bool),
         ("diffusion_conv_direct", ctypes.c_bool),
         ("vae_conv_direct", ctypes.c_bool),
         ("force_sdxl_vae_conv_scale", ctypes.c_bool),
@@ -455,7 +471,7 @@ class sd_pm_params_t(ctypes.Structure):
         ("id_images_count", ctypes.c_int),
         ("id_embed_path", ctypes.c_char_p),
         ("style_strength", ctypes.c_float),
-    ]
+    ]  # photo maker
 
 
 # -------------------------------------------
@@ -528,7 +544,7 @@ class sd_sample_params_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; } sd_img_gen_params_t;
+# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; } sd_img_gen_params_t;
 class sd_img_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("prompt", ctypes.c_char_p),
@@ -537,6 +553,7 @@ class sd_img_gen_params_t(ctypes.Structure):
         ("init_image", sd_image_t),
         ("ref_images", ctypes.POINTER(sd_image_t)),
         ("ref_images_count", ctypes.c_int),
+        ("auto_resize_ref_image", ctypes.c_bool),
         ("increase_ref_index", ctypes.c_bool),
         ("mask_image", sd_image_t),
         ("width", ctypes.c_int),
@@ -842,13 +859,17 @@ def sd_get_system_info() -> bytes:
 # Progression
 # ===========================================
 
+# typedef void (*sd_progress_cb_t)(int step, int steps, float time, void* data);
 sd_progress_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_void_p)
 
 
 # SD_API void sd_set_progress_callback(sd_progress_cb_t cb, void* data);
 @ctypes_function(
     "sd_set_progress_callback",
-    [ctypes.c_void_p, ctypes.c_void_p],
+    [
+        ctypes.c_void_p,  # sd_progress_cb_t
+        ctypes.c_void_p,  # data
+    ],
     None,
 )
 def sd_set_progress_callback(
@@ -857,6 +878,38 @@ def sd_set_progress_callback(
     /,
 ):
     """Set callback for diffusion progression events."""
+    ...
+
+
+# ===========================================
+# Preview
+# ===========================================
+
+# typedef void (*sd_preview_cb_t)(int step, int frame_count, sd_image_t* frames, bool is_noisy);
+sd_preview_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.POINTER(sd_image_t), ctypes.c_bool)
+
+
+# SD_API void sd_set_preview_callback(sd_preview_cb_t cb, preview_t mode, int interval, bool denoised, bool noisy);
+@ctypes_function(
+    "sd_set_preview_callback",
+    [
+        ctypes.c_void_p,  # sd_preview_cb_t
+        ctypes.c_int,  # preview_t mode
+        ctypes.c_int,  # interval
+        ctypes.c_bool,  # denoised
+        ctypes.c_bool,  # noisy
+    ],
+    None,
+)
+def sd_set_preview_callback(
+    callback: Optional[CtypesFuncPointer],
+    mode: int,
+    interval: int,
+    denoised: bool,
+    noisy: bool,
+    /,
+):
+    """Set callback for preview images during generation."""
     ...
 
 

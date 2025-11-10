@@ -31,7 +31,7 @@ def test_edit():
         keep_clip_on_cpu=True,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Edit image
@@ -42,7 +42,7 @@ def test_edit():
         cfg_scale=CFG_SCALE,
         image_cfg_scale=IMAGE_CFG_SCALE,
         sample_method=SAMPLE_METHOD,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image

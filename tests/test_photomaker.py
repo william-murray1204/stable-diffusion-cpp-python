@@ -30,7 +30,7 @@ def test_photomaker():
         vae_path=VAE_PATH,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate image
@@ -47,7 +47,7 @@ def test_photomaker():
             for f in os.listdir(INPUT_ID_IMAGES_DIR)
             if f.lower().endswith((".png", ".jpg", ".jpeg", ".bmp"))
         ],
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image

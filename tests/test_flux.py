@@ -34,7 +34,7 @@ def test_flux():
         vae_decode_only=True,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     for prompt in PROMPTS:
@@ -43,7 +43,7 @@ def test_flux():
             prompt=prompt["prompt"],
             sample_steps=STEPS,
             cfg_scale=CFG_SCALE,
-            progress_callback=callback,
+            progress_callback=progress_callback,
         )[0]
 
         # Save image

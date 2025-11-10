@@ -14,14 +14,14 @@ def test_upscale():
 
     stable_diffusion = StableDiffusion(upscaler_path=UPSCALER_MODEL_PATH)
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Upscale images
     images = stable_diffusion.upscale(
         images=INPUT_IMAGES,
         upscale_factor=UPSCALE_FACTOR,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )
 
     # Save images

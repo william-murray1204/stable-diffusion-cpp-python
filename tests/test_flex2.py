@@ -24,7 +24,7 @@ def test_flex2():
         vae_decode_only=True,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate image
@@ -32,7 +32,7 @@ def test_flex2():
         prompt=PROMPT,
         control_image=INPUT_IMAGE_PATH,
         sample_steps=STEPS,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image

@@ -27,7 +27,7 @@ def test_qwen_image_edit():
         flow_shift=FLOW_SHIFT,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate image
@@ -37,7 +37,7 @@ def test_qwen_image_edit():
         cfg_scale=CFG_SCALE,
         ref_images=INPUT_IMAGE_PATHS,
         sample_method=SAMPLE_METHOD,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image
