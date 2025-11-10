@@ -24,7 +24,7 @@ def test_chroma():
         chroma_use_dit_mask=False,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate image
@@ -32,7 +32,7 @@ def test_chroma():
         prompt=PROMPT,
         sample_steps=STEPS,
         cfg_scale=CFG_SCALE,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image

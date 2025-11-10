@@ -21,7 +21,7 @@ def test_controlnet():
         control_net_path=CONTROLNET_MODEL_PATH,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     for prompt in PROMPTS:
@@ -30,7 +30,7 @@ def test_controlnet():
             prompt=prompt["prompt"],
             control_image=INPUT_IMAGE_PATH,
             canny=prompt["canny"],
-            progress_callback=callback,
+            progress_callback=progress_callback,
         )[0]
 
         # Save image

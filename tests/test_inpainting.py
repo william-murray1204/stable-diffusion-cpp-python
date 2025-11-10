@@ -17,7 +17,7 @@ def test_inpainting():
 
     stable_diffusion = StableDiffusion(model_path=MODEL_PATH)
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate image
@@ -26,7 +26,7 @@ def test_inpainting():
         init_image=INPUT_IMAGE_PATH,
         mask_image=MASK_IMAGE_PATH,
         strength=STRENGTH,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image

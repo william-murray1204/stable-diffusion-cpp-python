@@ -11,7 +11,7 @@ import stable_diffusion_cpp as sd_cpp
 from ._utils import suppress_stdout_stderr
 from ._logger import log_event, set_verbose
 from ._internals import _UpscalerModel, _StableDiffusionModel
-from stable_diffusion_cpp import RNGType, GGMLType, Scheduler, SampleMethod, Prediction
+from stable_diffusion_cpp import RNGType, GGMLType, Scheduler, SampleMethod, Prediction, Preview
 
 
 class StableDiffusion:
@@ -45,6 +45,7 @@ class StableDiffusion:
         keep_control_net_on_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
         diffusion_flash_attn: bool = False,
+        tae_preview_only: bool = False,
         diffusion_conv_direct: bool = False,
         vae_conv_direct: bool = False,
         force_sdxl_vae_conv_scale: bool = False,
@@ -94,6 +95,7 @@ class StableDiffusion:
             keep_control_net_on_cpu: Keep Control Net in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
             diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly). May lower quality or crash if backend not supported.
+            tae_preview_only: Prevents usage of taesd for decoding the final image (for use with preview="tae").
             diffusion_conv_direct: Use Conv2d direct in the diffusion model. May crash if backend not supported.
             vae_conv_direct: Use Conv2d direct in the vae model (should improve performance). May crash if backend not supported.
             force_sdxl_vae_conv_scale: Force use of conv scale on SDXL vae.
@@ -139,6 +141,7 @@ class StableDiffusion:
         self.keep_control_net_on_cpu = keep_control_net_on_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
         self.diffusion_flash_attn = diffusion_flash_attn
+        self.tae_preview_only = tae_preview_only
         self.diffusion_conv_direct = diffusion_conv_direct
         self.vae_conv_direct = vae_conv_direct
         self.force_sdxl_vae_conv_scale = force_sdxl_vae_conv_scale
@@ -200,6 +203,7 @@ class StableDiffusion:
                     keep_control_net_on_cpu=self.keep_control_net_on_cpu,
                     keep_vae_on_cpu=self.keep_vae_on_cpu,
                     diffusion_flash_attn=self.diffusion_flash_attn,
+                    tae_preview_only=self.tae_preview_only,
                     diffusion_conv_direct=self.diffusion_conv_direct,
                     vae_conv_direct=self.vae_conv_direct,
                     force_sdxl_vae_conv_scale=self.force_sdxl_vae_conv_scale,
@@ -250,6 +254,7 @@ class StableDiffusion:
         clip_skip: int = -1,
         init_image: Optional[Union[Image.Image, str]] = None,
         ref_images: Optional[List[Union[Image.Image, str]]] = None,
+        auto_resize_ref_image: bool = True,
         increase_ref_index: bool = False,
         mask_image: Optional[Union[Image.Image, str]] = None,
         width: int = 512,
@@ -285,6 +290,10 @@ class StableDiffusion:
         vae_relative_tile_size: Optional[Union[float, str]] = "0x0",
         canny: bool = False,
         upscale_factor: int = 1,
+        preview_method: Union[str, Preview, int, float] = "none",
+        preview_noisy: bool = False,
+        preview_interval: int = 1,
+        preview_callback: Optional[Callable] = None,
         progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
         """Generate images from a text prompt and or input images.
@@ -295,6 +304,7 @@ class StableDiffusion:
             clip_skip: Ignore last layers of CLIP network (1 ignores none, 2 ignores one layer, <= 0 represents unspecified, will be 1 for SD1.x, 2 for SD2.x).
             init_image: An input image path or Pillow Image to direct the generation.
             ref_images: A list of input image paths or Pillow Images for Flux Kontext models (can be used multiple times).
+            auto_resize_ref_image: Automatically resize reference images.
             increase_ref_index: Automatically increase the indices of reference images based on the order they are listed (starting with 1).
             mask_image: The inpainting mask image path or Pillow Image.
             width: Image width, in pixel space.
@@ -325,6 +335,10 @@ class StableDiffusion:
             vae_relative_tile_size: Relative tile size for vae tiling, in fraction of image size if < 1, in number of tiles per dim if >=1 ([X]x[Y] format) (overrides `vae_tile_size`).
             canny: Apply canny edge detection preprocessor to the `control_image`.
             upscale_factor: Run the ESRGAN upscaler this many times.
+            preview_method: The preview method to use (default: none).
+            preview_noisy: Enables previewing noisy inputs of the models rather than the denoised outputs.
+            preview_interval: Interval in denoising steps between consecutive updates of the image preview (default: 1, meaning update at every step)
+            preview_callback: Callback function to call on each preview frame.
             progress_callback: Callback function to call on each step end.
 
         Returns:
@@ -370,7 +384,7 @@ class StableDiffusion:
             seed = random.randint(0, 10000)
 
         # -------------------------------------------
-        # Set the Callback Function
+        # Set the Progress Callback Function
         # -------------------------------------------
 
         if progress_callback is not None:
@@ -387,10 +401,36 @@ class StableDiffusion:
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
         # -------------------------------------------
+        # Set the Preview Callback Function
+        # -------------------------------------------
+
+        if preview_callback is not None:
+
+            @sd_cpp.sd_preview_callback
+            def sd_preview_callback(
+                step: int,
+                frame_count: int,
+                frames: sd_cpp.sd_image_t,
+                is_noisy: ctypes.c_bool,
+            ):
+                pil_frames = self._sd_image_t_p_to_images(frames, frame_count, 1)
+                preview_callback(step, pil_frames, is_noisy)
+
+            sd_cpp.sd_set_preview_callback(
+                sd_preview_callback,
+                self._validate_and_set_input(preview_method, PREVIEW_MAP, "preview_method"),
+                preview_interval,
+                not preview_noisy,
+                preview_noisy,
+            )
+
+        # -------------------------------------------
         # Reference Images
         # -------------------------------------------
 
-        ref_images_pointer, ref_images_count = self._create_image_array(ref_images)
+        ref_images_pointer, ref_images_count = self._create_image_array(
+            ref_images, resize=False
+        )  # Disable resize, sd.cpp handles it
         id_images_pointer, id_images_count = self._create_image_array(pm_id_images)
 
         # -------------------------------------------
@@ -448,6 +488,7 @@ class StableDiffusion:
             clip_skip=clip_skip,
             init_image=self._format_init_image(init_image, width, height),
             ref_images=ref_images_pointer,
+            auto_resize_ref_image=auto_resize_ref_image,
             ref_images_count=ref_images_count,
             increase_ref_index=increase_ref_index,
             mask_image=self._format_mask_image(mask_image, width, height),
@@ -556,6 +597,10 @@ class StableDiffusion:
         video_frames: int = 1,
         vace_strength: int = 1,
         upscale_factor: int = 1,
+        preview_method: Union[str, Preview, int, float] = "none",
+        preview_noisy: bool = False,
+        preview_interval: int = 1,
+        preview_callback: Optional[Callable] = None,
         progress_callback: Optional[Callable] = None,
     ) -> List[Image.Image]:
         """Generate a video from input images and or a text prompt.
@@ -598,6 +643,10 @@ class StableDiffusion:
             video_frames: Number of video frames to generate.
             vace_strength: Wan VACE strength.
             upscale_factor: Run the ESRGAN upscaler this many times.
+            preview_method: The preview method to use (default: none).
+            preview_noisy: Enables previewing noisy inputs of the models rather than the denoised outputs.
+            preview_interval: Interval in denoising steps between consecutive updates of the image preview (default: 1, meaning update at every step)
+            preview_callback: Callback function to call on each preview frame.
             progress_callback: Callback function to call on each step end.
 
         Returns:
@@ -646,7 +695,7 @@ class StableDiffusion:
             seed = random.randint(0, 10000)
 
         # -------------------------------------------
-        # Set the Callback Function
+        # Set the Progress Callback Function
         # -------------------------------------------
 
         if progress_callback is not None:
@@ -661,6 +710,30 @@ class StableDiffusion:
                 progress_callback(step, steps, time)
 
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
+
+        # -------------------------------------------
+        # Set the Preview Callback Function
+        # -------------------------------------------
+
+        if preview_callback is not None:
+
+            @sd_cpp.sd_preview_callback
+            def sd_preview_callback(
+                step: int,
+                frame_count: int,
+                frames: sd_cpp.sd_image_t,
+                is_noisy: ctypes.c_bool,
+            ):
+                pil_frames = self._sd_image_t_p_to_images(frames, frame_count, 1)
+                preview_callback(step, pil_frames, is_noisy)
+
+            sd_cpp.sd_set_preview_callback(
+                sd_preview_callback,
+                self._validate_and_set_input(preview_method, PREVIEW_MAP, "preview_method"),
+                preview_interval,
+                not preview_noisy,
+                preview_noisy,
+            )
 
         # -------------------------------------------
         # Control Frames
@@ -1065,6 +1138,7 @@ class StableDiffusion:
         width: Optional[int] = None,
         height: Optional[int] = None,
         max_images: Optional[int] = None,
+        resize: bool = True,
     ) -> List[sd_cpp.sd_image_t]:
         if not isinstance(images, list):
             images = [images]
@@ -1079,7 +1153,7 @@ class StableDiffusion:
                 # Skip invalid images
                 continue
 
-            if width and height:
+            if width and height and resize == True:
                 # Resize if width and height are provided
                 img = self._resize_image(img, width=width, height=height)
 
@@ -1445,4 +1519,12 @@ GGML_TYPE_MAP = {
     "mxfp4": GGMLType.SD_TYPE_MXFP4,
     # Default
     "default": GGMLType.SD_TYPE_COUNT,
+}
+
+PREVIEW_MAP = {
+    "none": Preview.PREVIEW_NONE,
+    "proj": Preview.PREVIEW_PROJ,
+    "tae": Preview.PREVIEW_TAE,
+    "vae": Preview.PREVIEW_VAE,
+    "preview_count": Preview.PREVIEW_COUNT,
 }

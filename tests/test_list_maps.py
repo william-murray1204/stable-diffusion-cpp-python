@@ -1,11 +1,12 @@
 from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import (
+    PREVIEW_MAP,
     RNG_TYPE_MAP,
     GGML_TYPE_MAP,
     SCHEDULER_MAP,
-    SAMPLE_METHOD_MAP,
     PREDICTION_MAP,
+    SAMPLE_METHOD_MAP,
 )
 
 
@@ -16,6 +17,7 @@ def test_list_maps():
         "Schedulers": SCHEDULER_MAP,
         "Sample methods": SAMPLE_METHOD_MAP,
         "Prediction types": PREDICTION_MAP,
+        "Preview methods": PREVIEW_MAP,
     }
 
     with open(f"{OUTPUT_DIR}/list_maps.txt", "w") as f:

@@ -131,7 +131,7 @@ CMAKE_ARGS="-DSD_VULKAN=ON" pip install stable-diffusion-cpp-python
 <details>
 <summary>Using SYCL</summary>
 
-Using SYCL runs the computation on an Intel GPU. Please make sure you have installed the related driver and [Intel® oneAPI Base toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html) before starting. For more details refer to [llama.cpp SYCL backend](https://github.com/ggerganov/llama.cpp/blob/master/docs/backend/SYCL.md#linux).
+Using SYCL runs the computation on an Intel GPU. Please make sure you have installed the related driver and [Intel® oneAPI Base toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit.html) before starting. For more details refer to [llama.cpp SYCL backend](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/SYCL.md#linux).
 
 ```bash
 # Export relevant ENV variables
@@ -268,10 +268,14 @@ Below is a short example demonstrating how to use the high-level API to generate
 ### <u>Text to Image</u>
 
 ```python
+from PIL import Image
 from stable_diffusion_cpp import StableDiffusion
 
-def callback(step: int, steps: int, time: float):
+def progress_callback(step: int, steps: int, time: float):
     print("Completed step: {} of {}".format(step, steps))
+
+def preview_callback(step: int, images: list[Image.Image], is_noisy: bool):
+    images[0].save(f"{PREVIEW_OUTPUT_DIR}/{step}.png")
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
@@ -281,8 +285,11 @@ output = stable_diffusion.generate_image(
       prompt="a lovely cat",
       width=512,
       height=512,
-      progress_callback=callback,
+      progress_callback=progress_callback,
       # seed=1337, # Uncomment to set a specific seed (use -1 for a random seed)
+      preview_method="proj",
+      preview_interval=2,  # Call every 2 steps
+      preview_callback=preview_callback,
 )
 output[0].save("output.png") # Output returned as list of PIL Images
 
@@ -388,6 +395,12 @@ Download the weights from the links below:
 - Otherwise, download chroma's safetensors from [lodestones/Chroma1-Flash](https://huggingface.co/lodestones/Chroma1-Flash), [lodestones/Chroma1-Base](https://huggingface.co/lodestones/Chroma1-Base) or [lodestones/Chroma1-HD](https://huggingface.co/lodestones/Chroma1-HD) ([lodestones/Chroma](https://huggingface.co/lodestones/Chroma) is DEPRECATED)
 - The `vae` and `t5xxl` models are the same as for FLUX image generation linked above (`clip_l` not required).
 
+or Chroma Radiance models from:
+
+- safetensors: https://huggingface.co/lodestones/Chroma1-Radiance/tree/main
+- gguf: https://huggingface.co/silveroxides/Chroma1-Radiance-GGUF/tree/main
+- t5xxl: https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
+
 ```python
 from stable_diffusion_cpp import StableDiffusion
 
@@ -404,6 +417,12 @@ output = stable_diffusion.generate_image(
       cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
 )
 ```
+
+---
+
+### <u>Some SD1.x and SDXL distilled models</u>
+
+See [docs/distilled_sd.md](./docs/distilled_sd.md) for instructions on using distilled SD models.
 
 ---
 
@@ -712,17 +731,19 @@ stable_diffusion.convert(
 
 ---
 
-### <u>Listing GGML model and RNG types, schedulers and sample methods</u>
+### <u>Listing GGML model/prediction/RNG types, sample/preview methods and schedulers</u>
 
-Access the GGML model and RNG types, schedulers, and sample methods via the following maps:
+Access the GGML model/prediction/RNG types, sample/preview methods and schedulers via the following maps:
 
 ```python
-from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULER_MAP, SAMPLE_METHOD_MAP
+from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULER_MAP, SAMPLE_METHOD_MAP, PREDICTION_MAP, PREVIEW_MAP
 
 print("GGML model types:", list(GGML_TYPE_MAP))
 print("RNG types:", list(RNG_TYPE_MAP))
 print("Schedulers:", list(SCHEDULER_MAP))
 print("Sample methods:", list(SAMPLE_METHOD_MAP))
+print("Prediction types:", list(PREDICTION_MAP))
+print("Preview methods:", list(PREVIEW_MAP))
 ```
 
 ---
@@ -778,7 +799,7 @@ Now you can make changes to the code within the `stable_diffusion_cpp` directory
 
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
 - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
-- [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- [llama.cpp](https://github.com/ggml-org/llama.cpp)
 - [whisper-cpp-python](https://github.com/carloscdias/whisper-cpp-python)
 - [Golang stable-diffusion](https://github.com/seasonjs/stable-diffusion)
 - [StableDiffusion.NET](https://github.com/DarthAffe/StableDiffusion.NET)

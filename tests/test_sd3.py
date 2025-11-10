@@ -27,7 +27,7 @@ def test_sd3():
         keep_clip_on_cpu=True,
     )
 
-    def callback(step: int, steps: int, time: float):
+    def progress_callback(step: int, steps: int, time: float):
         print("Completed step: {} of {}".format(step, steps))
 
     # Generate image
@@ -38,7 +38,7 @@ def test_sd3():
         cfg_scale=CFG_SCALE,
         sample_method=SAMPLE_METHOD,
         sample_steps=SAMPLE_STEPS,
-        progress_callback=callback,
+        progress_callback=progress_callback,
     )[0]
 
     # Save image
