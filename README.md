@@ -275,7 +275,7 @@ def progress_callback(step: int, steps: int, time: float):
     print("Completed step: {} of {}".format(step, steps))
 
 def preview_callback(step: int, images: list[Image.Image], is_noisy: bool):
-    images[0].save(f"{PREVIEW_OUTPUT_DIR}/{step}.png")
+    images[0].save(f"preview/{step}.png")
 
 stable_diffusion = StableDiffusion(
       model_path="../models/v1-5-pruned-emaonly.safetensors",
@@ -731,12 +731,12 @@ stable_diffusion.convert(
 
 ---
 
-### <u>Listing GGML model/prediction/RNG types, sample/preview methods and schedulers</u>
+### <u>Listing LoRA apply modes, GGML model/prediction/RNG types, sample/preview methods and schedulers</u>
 
-Access the GGML model/prediction/RNG types, sample/preview methods and schedulers via the following maps:
+Access the LoRA apply modes, GGML model/prediction/RNG types, sample/preview methods and schedulers via the following maps:
 
 ```python
-from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULER_MAP, SAMPLE_METHOD_MAP, PREDICTION_MAP, PREVIEW_MAP
+from stable_diffusion_cpp import GGML_TYPE_MAP, RNG_TYPE_MAP, SCHEDULER_MAP, SAMPLE_METHOD_MAP, PREDICTION_MAP, PREVIEW_MAP, LORA_APPLY_MODE_MAP
 
 print("GGML model types:", list(GGML_TYPE_MAP))
 print("RNG types:", list(RNG_TYPE_MAP))
@@ -744,6 +744,7 @@ print("Schedulers:", list(SCHEDULER_MAP))
 print("Sample methods:", list(SAMPLE_METHOD_MAP))
 print("Prediction types:", list(PREDICTION_MAP))
 print("Preview methods:", list(PREVIEW_MAP))
+print("LoRA apply modes:", list(LORA_APPLY_MODE_MAP))
 ```
 
 ---

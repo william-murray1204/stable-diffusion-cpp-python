@@ -11,7 +11,15 @@ import stable_diffusion_cpp as sd_cpp
 from ._utils import suppress_stdout_stderr
 from ._logger import log_event, set_verbose
 from ._internals import _UpscalerModel, _StableDiffusionModel
-from stable_diffusion_cpp import RNGType, GGMLType, Scheduler, SampleMethod, Prediction, Preview
+from stable_diffusion_cpp import (
+    Preview,
+    RNGType,
+    GGMLType,
+    Scheduler,
+    Prediction,
+    SampleMethod,
+    LoraApplyMode,
+)
 
 
 class StableDiffusion:
@@ -35,11 +43,14 @@ class StableDiffusion:
         lora_model_dir: str = "",
         embedding_dir: str = "",
         photo_maker_path: str = "",
+        tensor_type_rules: str = "",
         vae_decode_only: bool = False,
         n_threads: int = -1,
         wtype: Union[str, GGMLType, int, float] = "default",
         rng_type: Union[str, RNGType, int, float] = "cuda",
+        sampler_rng_type: Union[str, RNGType, int, float] = "cuda",
         prediction: Union[str, Prediction, int, float] = "default",
+        lora_apply_mode: Union[str, LoraApplyMode, int, float] = "auto",
         offload_params_to_cpu: bool = False,
         keep_clip_on_cpu: bool = False,
         keep_control_net_on_cpu: bool = False,
@@ -85,11 +96,14 @@ class StableDiffusion:
             lora_model_dir: Lora model directory.
             embedding_dir: Path to embeddings.
             photo_maker_path: Path to PhotoMaker model.
+            tensor_type_rules: Weight type per tensor pattern (example: "^vae\\.=f16,model\\.=q8_0")
             vae_decode_only: Process vae in decode only mode.
             n_threads: Number of threads to use for generation (default: half the number of CPUs).
             wtype: The weight type (default: automatically determines the weight type of the model file).
             rng_type: Random number generator.
+            sampler_rng_type: Random number generator for sampler.
             prediction: Prediction type override.
+            lora_apply_mode: The way to apply LoRA, (default: "auto"). In auto mode, if the model weights contain any quantized parameters, the "at_runtime" mode will be used; otherwise, "immediately" will be used. The "immediately" mode may have precision and compatibility issues with quantized parameters, but it usually offers faster inference speed and, in some cases, lower memory usage. The "at_runtime" mode, on the other hand, is exactly the opposite.
             offload_params_to_cpu: Place the weights in RAM to save VRAM, and automatically load them into VRAM when needed.
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_on_cpu: Keep Control Net in CPU (for low vram).
@@ -131,11 +145,14 @@ class StableDiffusion:
         self.lora_model_dir = self._clean_path(lora_model_dir)
         self.embedding_dir = self._clean_path(embedding_dir)
         self.photo_maker_path = self._clean_path(photo_maker_path)
+        self.tensor_type_rules = tensor_type_rules
         self.vae_decode_only = vae_decode_only
         self.n_threads = n_threads
         self.wtype = wtype
         self.rng_type = rng_type
+        self.sampler_rng_type = sampler_rng_type
         self.prediction = prediction
+        self.lora_apply_mode = lora_apply_mode
         self.offload_params_to_cpu = offload_params_to_cpu
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_on_cpu = keep_control_net_on_cpu
@@ -169,7 +186,9 @@ class StableDiffusion:
 
         self.wtype = self._validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
         self.rng_type = self._validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
+        self.sampler_rng_type = self._validate_and_set_input(self.sampler_rng_type, RNG_TYPE_MAP, "sampler_rng_type")
         self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
+        self.lora_apply_mode = self._validate_and_set_input(self.lora_apply_mode, LORA_APPLY_MODE_MAP, "lora_apply_mode")
 
         # -------------------------------------------
         # SD Model Loading
@@ -193,11 +212,14 @@ class StableDiffusion:
                     lora_model_dir=self.lora_model_dir,
                     embedding_dir=self.embedding_dir,
                     photo_maker_path=self.photo_maker_path,
+                    tensor_type_rules=self.tensor_type_rules,
                     vae_decode_only=self.vae_decode_only,
                     n_threads=self.n_threads,
                     wtype=self.wtype,
                     rng_type=self.rng_type,
+                    sampler_rng_type=self.sampler_rng_type,
                     prediction=self.prediction,
+                    lora_apply_mode=self.lora_apply_mode,
                     offload_params_to_cpu=self.offload_params_to_cpu,
                     keep_clip_on_cpu=self.keep_clip_on_cpu,
                     keep_control_net_on_cpu=self.keep_control_net_on_cpu,
@@ -265,8 +287,8 @@ class StableDiffusion:
         image_cfg_scale: Optional[float] = None,
         guidance: float = 3.5,
         # sample_params
-        scheduler: Union[str, Scheduler, int, float] = "default",
-        sample_method: Union[str, SampleMethod, int, float] = "default",
+        scheduler: Union[str, Scheduler, int, float, None] = "default",
+        sample_method: Union[str, SampleMethod, int, float, None] = "default",
         sample_steps: int = 20,
         eta: float = 0.0,
         timestep_shift: int = 0,
@@ -288,6 +310,8 @@ class StableDiffusion:
         vae_tile_overlap: float = 0.5,
         vae_tile_size: Optional[Union[int, str]] = "0x0",
         vae_relative_tile_size: Optional[Union[float, str]] = "0x0",
+        easycache: bool = False,
+        easycache_options: str = "0.2,0.15,0.95",
         canny: bool = False,
         upscale_factor: int = 1,
         preview_method: Union[str, Preview, int, float] = "none",
@@ -312,8 +336,8 @@ class StableDiffusion:
             cfg_scale: Unconditional guidance scale.
             image_cfg_scale: Image guidance scale for inpaint or instruct-pix2pix models.
             guidance: Distilled guidance scale for models with guidance input.
-            scheduler: Denoiser sigma scheduler.
-            sample_method: Sampling method.
+            scheduler: Denoiser sigma scheduler (default: discrete).
+            sample_method: Sampling method (default: euler for Flux/SD3/Wan, euler_a otherwise).
             sample_steps: Number of sample steps.
             eta: Eta in DDIM, only for DDIM and TCD.
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
@@ -333,6 +357,8 @@ class StableDiffusion:
             vae_tile_overlap: Tile overlap for vae tiling, in fraction of tile size.
             vae_tile_size: Tile size for vae tiling ([X]x[Y] format).
             vae_relative_tile_size: Relative tile size for vae tiling, in fraction of image size if < 1, in number of tiles per dim if >=1 ([X]x[Y] format) (overrides `vae_tile_size`).
+            easycache: Enable EasyCache for DiT models.
+            easycache_options: EasyCache options for DiT models with format "threshold,start_percent,end_percent".
             canny: Apply canny edge detection preprocessor to the `control_image`.
             upscale_factor: Run the ESRGAN upscaler this many times.
             preview_method: The preview method to use (default: none).
@@ -428,10 +454,10 @@ class StableDiffusion:
         # Reference Images
         # -------------------------------------------
 
-        ref_images_pointer, ref_images_count = self._create_image_array(
+        _ref_images_pointer, ref_images_count = self._create_image_array(
             ref_images, resize=False
         )  # Disable resize, sd.cpp handles it
-        id_images_pointer, id_images_count = self._create_image_array(pm_id_images)
+        _id_images_pointer, id_images_count = self._create_image_array(pm_id_images)
 
         # -------------------------------------------
         # Vae Tiling
@@ -441,17 +467,36 @@ class StableDiffusion:
         rel_size_x, rel_size_y = self._parse_tile_size(vae_relative_tile_size, as_float=True)
 
         # -------------------------------------------
+        # Scheduler/Sample Method
+        # -------------------------------------------
+
+        scheduler = self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler", allow_none=True)
+        if scheduler is None:
+            scheduler = sd_cpp.sd_get_default_scheduler(self.model)
+
+        sample_method = self._validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method", allow_none=True)
+        if sample_method is None:
+            sample_method = sd_cpp.sd_get_default_sample_method(self.model)
+
+        # -------------------------------------------
         # Parameters
         # -------------------------------------------
 
-        pm_params = sd_cpp.sd_pm_params_t(
-            id_images=id_images_pointer,
+        _easycache_params = sd_cpp.sd_easycache_params_t(
+            **self._parse_easycache(
+                enabled=easycache,
+                option_value=easycache_options,
+            )
+        )
+
+        _pm_params = sd_cpp.sd_pm_params_t(
+            id_images=_id_images_pointer,
             id_images_count=id_images_count,
             id_embed_path=pm_id_embed_path.encode("utf-8"),
             style_strength=pm_style_strength,
         )
 
-        vae_tiling_params = sd_cpp.sd_tiling_params_t(
+        _vae_tiling_params = sd_cpp.sd_tiling_params_t(
             enabled=vae_tiling,
             tile_size_x=tile_size_x,
             tile_size_y=tile_size_y,
@@ -460,7 +505,7 @@ class StableDiffusion:
             rel_size_y=rel_size_y,
         )
 
-        guidance_params = sd_cpp.sd_guidance_params_t(
+        _guidance_params = sd_cpp.sd_guidance_params_t(
             txt_cfg=cfg_scale,
             img_cfg=image_cfg_scale,
             distilled_guidance=guidance,
@@ -473,35 +518,36 @@ class StableDiffusion:
             ),
         )
 
-        sample_params = sd_cpp.sd_sample_params_t(
-            guidance=guidance_params,
-            scheduler=self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler"),
-            sample_method=self._validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method"),
+        _sample_params = sd_cpp.sd_sample_params_t(
+            guidance=_guidance_params,
+            scheduler=scheduler,
+            sample_method=sample_method,
             sample_steps=sample_steps,
             eta=eta,
             shifted_timestep=timestep_shift,
         )
 
-        params = sd_cpp.sd_img_gen_params_t(
+        _params = sd_cpp.sd_img_gen_params_t(
             prompt=prompt.encode("utf-8"),
             negative_prompt=negative_prompt.encode("utf-8"),
             clip_skip=clip_skip,
             init_image=self._format_init_image(init_image, width, height),
-            ref_images=ref_images_pointer,
+            ref_images=_ref_images_pointer,
             auto_resize_ref_image=auto_resize_ref_image,
             ref_images_count=ref_images_count,
             increase_ref_index=increase_ref_index,
             mask_image=self._format_mask_image(mask_image, width, height),
             width=width,
             height=height,
-            sample_params=sample_params,
+            sample_params=_sample_params,
             strength=strength,
             seed=seed,
             batch_count=batch_count,
             control_image=self._format_control_image(control_image, canny, width, height),
             control_strength=control_strength,
-            pm_params=pm_params,
-            vae_tiling_params=vae_tiling_params,
+            pm_params=_pm_params,
+            vae_tiling_params=_vae_tiling_params,
+            easycache=_easycache_params,
         )
 
         # Log system info
@@ -509,13 +555,13 @@ class StableDiffusion:
 
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate images
-            c_images = sd_cpp.generate_image(
+            _c_images = sd_cpp.generate_image(
                 self.model,
-                ctypes.byref(params),
+                ctypes.byref(_params),
             )
 
         # Convert C array to Python list of images
-        images = self._sd_image_t_p_to_images(c_images, batch_count, upscale_factor)
+        images = self._sd_image_t_p_to_images(_c_images, batch_count, upscale_factor)
 
         # -------------------------------------------
         # Attach Image Metadata
@@ -529,14 +575,12 @@ class StableDiffusion:
             not in {
                 "self",
                 "images",
-                "c_images",
-                "ref_images_pointer",
                 "progress_callback",
                 "sd_progress_callback",
-                "guidance_params",
-                "sample_params",
-                "params",
+                "preview_callback",
+                "sd_preview_callback",
             }
+            and not k.startswith("_")  # Skip internals
         }
         model_args = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}  # Skip internals
 
@@ -565,8 +609,8 @@ class StableDiffusion:
         image_cfg_scale: Optional[float] = None,
         guidance: float = 3.5,
         # sample_params
-        scheduler: Union[str, Scheduler, int, float] = "default",
-        sample_method: Optional[Union[str, SampleMethod, int, float]] = "default",
+        scheduler: Union[str, Scheduler, int, float, None] = "default",
+        sample_method: Optional[Union[str, SampleMethod, int, float, None]] = "default",
         sample_steps: int = 20,
         eta: float = 0.0,
         timestep_shift: int = 0,
@@ -581,8 +625,8 @@ class StableDiffusion:
         high_noise_image_cfg_scale: Optional[float] = None,
         high_noise_guidance: float = 3.5,
         # high_noise_sample_params
-        high_noise_scheduler: Union[str, Scheduler, int, float] = "default",
-        high_noise_sample_method: Union[str, SampleMethod, int, float] = "default",
+        high_noise_scheduler: Union[str, Scheduler, int, float, None] = "default",
+        high_noise_sample_method: Union[str, SampleMethod, int, float, None] = "default",
         high_noise_sample_steps: int = -1,
         high_noise_eta: float = 0.0,
         # high_noise_slg_params
@@ -596,6 +640,8 @@ class StableDiffusion:
         seed: int = 42,
         video_frames: int = 1,
         vace_strength: int = 1,
+        easycache: bool = False,
+        easycache_options: str = "0.2,0.15,0.95",
         upscale_factor: int = 1,
         preview_method: Union[str, Preview, int, float] = "none",
         preview_noisy: bool = False,
@@ -617,8 +663,8 @@ class StableDiffusion:
             cfg_scale: Unconditional guidance scale.
             image_cfg_scale: Image guidance scale for inpaint or instruct-pix2pix models (default: same as `cfg_scale`).
             guidance: Distilled guidance scale for models with guidance input.
-            scheduler: Denoiser sigma scheduler.
-            sample_method: Sampling method.
+            scheduler: Denoiser sigma scheduler (default: discrete).
+            sample_method: Sampling method (default: euler for Flux/SD3/Wan, euler_a otherwise).
             sample_steps: Number of sample steps.
             eta: Eta in DDIM, only for DDIM and TCD.
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
@@ -642,6 +688,7 @@ class StableDiffusion:
             seed: RNG seed (uses random seed for < 0).
             video_frames: Number of video frames to generate.
             vace_strength: Wan VACE strength.
+            easycache: Enable EasyCache for DiT models with optional "threshold,start_percent,end_percent".
             upscale_factor: Run the ESRGAN upscaler this many times.
             preview_method: The preview method to use (default: none).
             preview_noisy: Enables previewing noisy inputs of the models rather than the denoised outputs.
@@ -739,7 +786,7 @@ class StableDiffusion:
         # Control Frames
         # -------------------------------------------
 
-        control_frames_pointer, control_frames_size = self._create_image_array(
+        _control_frames_pointer, control_frames_size = self._create_image_array(
             control_frames,
             width=width,
             height=height,
@@ -747,10 +794,41 @@ class StableDiffusion:
         )
 
         # -------------------------------------------
+        # Scheduler/Sample Method
+        # -------------------------------------------
+
+        scheduler = self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler", allow_none=True)
+        if scheduler is None:
+            scheduler = sd_cpp.sd_get_default_scheduler(self.model)
+
+        # "sample_method_count" is not valid here (it will crash)
+        sample_method = self._validate_and_set_input(
+            sample_method,
+            {k: v for k, v in SAMPLE_METHOD_MAP.items() if k not in ["sample_method_count"]},
+            "sample_method",
+            allow_none=True,
+        )
+        if sample_method is None:
+            sample_method = sd_cpp.sd_get_default_sample_method(self.model)
+
+        # High Noise
+        high_noise_scheduler = self._validate_and_set_input(
+            high_noise_scheduler, SCHEDULER_MAP, "high_noise_scheduler", allow_none=True
+        )
+        if high_noise_scheduler is None:
+            high_noise_scheduler = scheduler
+
+        high_noise_sample_method = self._validate_and_set_input(
+            high_noise_sample_method, SAMPLE_METHOD_MAP, "high_noise_sample_method", allow_none=True
+        )
+        if high_noise_sample_method is None:
+            high_noise_sample_method = sample_method
+
+        # -------------------------------------------
         #  High Noise Parameters
         # -------------------------------------------
 
-        high_noise_guidance_params = sd_cpp.sd_guidance_params_t(
+        _high_noise_guidance_params = sd_cpp.sd_guidance_params_t(
             txt_cfg=high_noise_cfg_scale,
             img_cfg=high_noise_image_cfg_scale,
             distilled_guidance=high_noise_guidance,
@@ -763,10 +841,10 @@ class StableDiffusion:
             ),
         )
 
-        high_noise_sample_params = sd_cpp.sd_sample_params_t(
-            guidance=high_noise_guidance_params,
-            scheduler=self._validate_and_set_input(high_noise_scheduler, SCHEDULER_MAP, "high_noise_scheduler"),
-            sample_method=self._validate_and_set_input(high_noise_sample_method, SAMPLE_METHOD_MAP, "high_noise_sample_method"),
+        _high_noise_sample_params = sd_cpp.sd_sample_params_t(
+            guidance=_high_noise_guidance_params,
+            scheduler=high_noise_scheduler,
+            sample_method=high_noise_sample_method,
             sample_steps=high_noise_sample_steps,
             eta=high_noise_eta,
             shifted_timestep=timestep_shift,
@@ -776,7 +854,14 @@ class StableDiffusion:
         # Parameters
         # -------------------------------------------
 
-        guidance_params = sd_cpp.sd_guidance_params_t(
+        _easycache_params = sd_cpp.sd_easycache_params_t(
+            **self._parse_easycache(
+                enabled=easycache,
+                option_value=easycache_options,
+            )
+        )
+
+        _guidance_params = sd_cpp.sd_guidance_params_t(
             txt_cfg=cfg_scale,
             img_cfg=image_cfg_scale,
             distilled_guidance=guidance,
@@ -789,51 +874,49 @@ class StableDiffusion:
             ),
         )
 
-        sample_params = sd_cpp.sd_sample_params_t(
-            guidance=guidance_params,
-            scheduler=self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler"),
-            # sample_method_count is not valid here
-            sample_method=self._validate_and_set_input(
-                sample_method, {k: v for k, v in SAMPLE_METHOD_MAP.items() if k not in ["sample_method_count"]}, "sample_method"
-            ),
+        _sample_params = sd_cpp.sd_sample_params_t(
+            guidance=_guidance_params,
+            scheduler=scheduler,
+            sample_method=sample_method,
             sample_steps=sample_steps,
             eta=eta,
             shifted_timestep=timestep_shift,
         )
 
-        params = sd_cpp.sd_vid_gen_params_t(
+        _params = sd_cpp.sd_vid_gen_params_t(
             prompt=prompt.encode("utf-8"),
             negative_prompt=negative_prompt.encode("utf-8"),
             clip_skip=clip_skip,
             init_image=self._format_init_image(init_image, width, height),
             end_image=self._format_init_image(end_image, width, height),
-            control_frames=control_frames_pointer,
+            control_frames=_control_frames_pointer,
             control_frames_size=control_frames_size,
             width=width,
             height=height,
-            sample_params=sample_params,
-            high_noise_sample_params=high_noise_sample_params,
+            sample_params=_sample_params,
+            high_noise_sample_params=_high_noise_sample_params,
             moe_boundary=moe_boundary,
             strength=strength,
             seed=seed,
             video_frames=video_frames,
             vace_strength=vace_strength,
+            easycache=_easycache_params,
         )
 
         # Log system info
         log_event(level=2, message=sd_cpp.sd_get_system_info().decode("utf-8"))
 
-        num_results = ctypes.c_int()
+        _num_results = ctypes.c_int()
         with suppress_stdout_stderr(disable=self.verbose):
             # Generate the video
-            c_images = sd_cpp.generate_video(
+            _c_images = sd_cpp.generate_video(
                 self.model,
-                ctypes.byref(params),
-                ctypes.byref(num_results),
+                ctypes.byref(_params),
+                ctypes.byref(_num_results),
             )
 
         # Convert C array to Python list of images
-        images = self._sd_image_t_p_to_images(c_images, int(num_results.value), upscale_factor)
+        images = self._sd_image_t_p_to_images(_c_images, int(_num_results.value), upscale_factor)
 
         # -------------------------------------------
         # Attach Image Metadata
@@ -847,16 +930,12 @@ class StableDiffusion:
             not in {
                 "self",
                 "images",
-                "c_images",
                 "progress_callback",
                 "sd_progress_callback",
-                "num_results",
-                "guidance_params",
-                "sample_params",
-                "high_noise_guidance_params",
-                "high_noise_sample_params",
-                "params",
+                "preview_callback",
+                "sd_preview_callback",
             }
+            and not k.startswith("_")  # Skip internals
         }
         model_args = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}  # Skip internals
 
@@ -957,6 +1036,8 @@ class StableDiffusion:
 
             sd_cpp.sd_set_progress_callback(sd_progress_callback, ctypes.c_void_p(0))
 
+        # NOTE: Preview callback not supported for upscaling (nothing is called back from sd.cpp)
+
         # -------------------------------------------
         # Ensure List of Images
         # -------------------------------------------
@@ -1043,6 +1124,33 @@ class StableDiffusion:
     # ===========================================
     # Input Formatting and Validation
     # ===========================================
+
+    # -------------------------------------------
+    # Parse EasyCache
+    # -------------------------------------------
+
+    def _parse_easycache(self, enabled: bool, option_value: str) -> dict:
+        parts = [p.strip() for p in str(option_value).split(",")]
+        if len(parts) != 3:
+            raise ValueError("easycache expects exactly 3 comma-separated values (threshold,start,end)")
+
+        try:
+            threshold, start, end = map(float, parts)
+        except ValueError:
+            raise ValueError(f"invalid easycache value '{option_value}'")
+
+        if threshold < 0.0:
+            raise ValueError("easycache threshold must be non-negative")
+
+        if not (0.0 <= start < end <= 1.0):
+            raise ValueError("easycache start/end must satisfy 0.0 <= start < end <= 1.0")
+
+        return {
+            "enabled": enabled,
+            "reuse_threshold": threshold,
+            "start_percent": start,
+            "end_percent": end,
+        }
 
     # -------------------------------------------
     # Parse Tile Size
@@ -1179,8 +1287,13 @@ class StableDiffusion:
     # Validate and Set Input
     # -------------------------------------------
 
-    def _validate_and_set_input(self, user_input: Union[str, int, float], type_map: Dict, attribute_name: str):
+    def _validate_and_set_input(
+        self, user_input: Union[str, int, float, None], type_map: Dict, attribute_name: str, allow_none: bool = False
+    ) -> Optional[int]:
         """Validate an input strinbg or int from a map of strings to integers."""
+        if user_input is None and allow_none == True:
+            return None
+
         if isinstance(user_input, float):
             user_input = int(user_input)  # Convert float to int
 
@@ -1188,6 +1301,10 @@ class StableDiffusion:
         if isinstance(user_input, str):
             user_input = user_input.strip().lower()
             if user_input in type_map:
+                map_result = type_map[user_input]
+                if map_result is None:
+                    return None
+
                 return int(type_map[user_input])
             else:
                 raise ValueError(f"Invalid `{attribute_name}` type '{user_input}'. Must be one of {list(type_map.keys())}.")
@@ -1434,37 +1551,39 @@ class StableDiffusion:
 RNG_TYPE_MAP = {
     "default": RNGType.STD_DEFAULT_RNG,
     "cuda": RNGType.CUDA_RNG,
+    "cpu": RNGType.CPU_RNG,
     "type_count": RNGType.RNG_TYPE_COUNT,
 }
 
 SAMPLE_METHOD_MAP = {
-    "default": SampleMethod.SAMPLE_METHOD_DEFAULT,
-    "euler": SampleMethod.EULER,
-    "heun": SampleMethod.HEUN,
-    "dpm2": SampleMethod.DPM2,
-    "dpmpp2s_a": SampleMethod.DPMPP2S_A,
-    "dpmpp2m": SampleMethod.DPMPP2M,
-    "dpmpp2mv2": SampleMethod.DPMPP2Mv2,
-    "ipndm": SampleMethod.IPNDM,
-    "ipndm_v": SampleMethod.IPNDM_V,
-    "lcm": SampleMethod.LCM,
-    "ddim_trailing": SampleMethod.DDIM_TRAILING,
-    "tcd": SampleMethod.TCD,
-    "euler_a": SampleMethod.EULER_A,
+    "default": None,
+    "euler": SampleMethod.EULER_SAMPLE_METHOD,
+    "euler_a": SampleMethod.EULER_A_SAMPLE_METHOD,
+    "heun": SampleMethod.HEUN_SAMPLE_METHOD,
+    "dpm2": SampleMethod.DPM2_SAMPLE_METHOD,
+    "dpm++2s_a": SampleMethod.DPMPP2S_A_SAMPLE_METHOD,
+    "dpm++2m": SampleMethod.DPMPP2M_SAMPLE_METHOD,
+    "dpm++2mv2": SampleMethod.DPMPP2Mv2_SAMPLE_METHOD,
+    "ipndm": SampleMethod.IPNDM_SAMPLE_METHOD,
+    "ipndm_v": SampleMethod.IPNDM_V_SAMPLE_METHOD,
+    "lcm": SampleMethod.LCM_SAMPLE_METHOD,
+    "ddim_trailing": SampleMethod.DDIM_TRAILING_SAMPLE_METHOD,
+    "tcd": SampleMethod.TCD_SAMPLE_METHOD,
     "sample_method_count": SampleMethod.SAMPLE_METHOD_COUNT,
 }
 
 SCHEDULER_MAP = {
-    "default": Scheduler.DEFAULT,
-    "discrete": Scheduler.DISCRETE,
-    "karras": Scheduler.KARRAS,
-    "exponential": Scheduler.EXPONENTIAL,
-    "ays": Scheduler.AYS,
-    "gits": Scheduler.GITS,
-    "sgm_uniform": Scheduler.SGM_UNIFORM,
-    "simple": Scheduler.SIMPLE,
-    "smoothstep": Scheduler.SMOOTHSTEP,
-    "schedule_count": Scheduler.SCHEDULE_COUNT,
+    "default": None,
+    "discrete": Scheduler.DISCRETE_SCHEDULER,
+    "karras": Scheduler.KARRAS_SCHEDULER,
+    "exponential": Scheduler.EXPONENTIAL_SCHEDULER,
+    "ays": Scheduler.AYS_SCHEDULER,
+    "gits": Scheduler.GITS_SCHEDULER,
+    "sgm_uniform": Scheduler.SGM_UNIFORM_SCHEDULER,
+    "simple": Scheduler.SIMPLE_SCHEDULER,
+    "smoothstep": Scheduler.SMOOTHSTEP_SCHEDULER,
+    "lcm": Scheduler.LCM_SCHEDULER,
+    "scheduler_count": Scheduler.SCHEDULER_COUNT,
 }
 
 PREDICTION_MAP = {
@@ -1527,4 +1646,11 @@ PREVIEW_MAP = {
     "tae": Preview.PREVIEW_TAE,
     "vae": Preview.PREVIEW_VAE,
     "preview_count": Preview.PREVIEW_COUNT,
+}
+
+LORA_APPLY_MODE_MAP = {
+    "auto": LoraApplyMode.LORA_APPLY_AUTO,
+    "immediately": LoraApplyMode.LORA_APPLY_IMMEDIATELY,
+    "at_runtime": LoraApplyMode.LORA_APPLY_AT_RUNTIME,
+    "lora_apply_mode_count": LoraApplyMode.LORA_APPLY_MODE_COUNT,
 }
