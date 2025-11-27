@@ -158,7 +158,6 @@ ggml_abort_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p)
 class RNGType(IntEnum):
     STD_DEFAULT_RNG = 0
     CUDA_RNG = 1
-    RNG_TYPE_COUNT = 2
     CPU_RNG = 2
     RNG_TYPE_COUNT = 3
 
