@@ -7,6 +7,7 @@ from stable_diffusion_cpp import (
     SCHEDULER_MAP,
     PREDICTION_MAP,
     SAMPLE_METHOD_MAP,
+    LORA_APPLY_MODE_MAP
 )
 
 
@@ -18,6 +19,7 @@ def test_list_maps():
         "Sample methods": SAMPLE_METHOD_MAP,
         "Prediction types": PREDICTION_MAP,
         "Preview methods": PREVIEW_MAP,
+        "LoRA apply modes": LORA_APPLY_MODE_MAP,
     }
 
     with open(f"{OUTPUT_DIR}/list_maps.txt", "w") as f:

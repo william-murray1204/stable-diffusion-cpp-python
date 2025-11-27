@@ -152,70 +152,70 @@ ggml_abort_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p)
 # enum rng_type_t {
 #     STD_DEFAULT_RNG,
 #     CUDA_RNG,
+#     CPU_RNG,
 #     RNG_TYPE_COUNT
 # };
 class RNGType(IntEnum):
     STD_DEFAULT_RNG = 0
     CUDA_RNG = 1
-    RNG_TYPE_COUNT = 2
+    CPU_RNG = 2
+    RNG_TYPE_COUNT = 3
 
 
 # enum sample_method_t {
-#     SAMPLE_METHOD_DEFAULT,
-#     EULER,
-#     HEUN,
-#     DPM2,
-#     DPMPP2S_A,
-#     DPMPP2M,
-#     DPMPP2Mv2,
-#     IPNDM,
-#     IPNDM_V,
-#     LCM,
-#     DDIM_TRAILING,
-#     TCD,
-#     EULER_A,
+#     EULER_SAMPLE_METHOD,
+#     EULER_A_SAMPLE_METHOD,
+#     HEUN_SAMPLE_METHOD,
+#     DPM2_SAMPLE_METHOD,
+#     DPMPP2S_A_SAMPLE_METHOD,
+#     DPMPP2M_SAMPLE_METHOD,
+#     DPMPP2Mv2_SAMPLE_METHOD,
+#     IPNDM_SAMPLE_METHOD,
+#     IPNDM_V_SAMPLE_METHOD,
+#     LCM_SAMPLE_METHOD,
+#     DDIM_TRAILING_SAMPLE_METHOD,
+#     TCD_SAMPLE_METHOD,
 #     SAMPLE_METHOD_COUNT
 # };
 class SampleMethod(IntEnum):
-    SAMPLE_METHOD_DEFAULT = 0
-    EULER = 1
-    HEUN = 2
-    DPM2 = 3
-    DPMPP2S_A = 4
-    DPMPP2M = 5
-    DPMPP2Mv2 = 6
-    IPNDM = 7
-    IPNDM_V = 8
-    LCM = 9
-    DDIM_TRAILING = 10
-    TCD = 11
-    EULER_A = 12
-    SAMPLE_METHOD_COUNT = 13
+    EULER_SAMPLE_METHOD = 0
+    EULER_A_SAMPLE_METHOD = 1
+    HEUN_SAMPLE_METHOD = 2
+    DPM2_SAMPLE_METHOD = 3
+    DPMPP2S_A_SAMPLE_METHOD = 4
+    DPMPP2M_SAMPLE_METHOD = 5
+    DPMPP2Mv2_SAMPLE_METHOD = 6
+    IPNDM_SAMPLE_METHOD = 7
+    IPNDM_V_SAMPLE_METHOD = 8
+    LCM_SAMPLE_METHOD = 9
+    DDIM_TRAILING_SAMPLE_METHOD = 10
+    TCD_SAMPLE_METHOD = 11
+    SAMPLE_METHOD_COUNT = 12
 
 
 # enum scheduler_t {
-#     DEFAULT,
-#     DISCRETE,
-#     KARRAS,
-#     EXPONENTIAL,
-#     AYS,
-#     GITS,
-#     SGM_UNIFORM,
-#     SIMPLE,
-#     SMOOTHSTEP,
-#     SCHEDULE_COUNT
+#     DISCRETE_SCHEDULER,
+#     KARRAS_SCHEDULER,
+#     EXPONENTIAL_SCHEDULER,
+#     AYS_SCHEDULER,
+#     GITS_SCHEDULER,
+#     SGM_UNIFORM_SCHEDULER,
+#     SIMPLE_SCHEDULER,
+#     SMOOTHSTEP_SCHEDULER,
+#     LCM_SCHEDULER,
+#     SCHEDULER_COUNT
 # };
 class Scheduler(IntEnum):
-    DEFAULT = 0
-    DISCRETE = 1
-    KARRAS = 2
-    EXPONENTIAL = 3
-    AYS = 4
-    GITS = 5
-    SGM_UNIFORM = 6
-    SIMPLE = 7
-    SMOOTHSTEP = 8
-    SCHEDULE_COUNT = 9
+    DISCRETE_SCHEDULER = 0
+    KARRAS_SCHEDULER = 1
+    EXPONENTIAL_SCHEDULER = 2
+    AYS_SCHEDULER = 3
+    GITS_SCHEDULER = 4
+    SGM_UNIFORM_SCHEDULER = 5
+    SIMPLE_SCHEDULER = 6
+    SMOOTHSTEP_SCHEDULER = 7
+    LCM_SCHEDULER = 8
+    SCHEDULER_COUNT = 9
 
 
 # enum prediction_t {
@@ -341,6 +341,19 @@ class Preview(IntEnum):
     PREVIEW_COUNT = 4
 
 
+# enum lora_apply_mode_t {
+#     LORA_APPLY_AUTO,
+#     LORA_APPLY_IMMEDIATELY,
+#     LORA_APPLY_AT_RUNTIME,
+#     LORA_APPLY_MODE_COUNT,
+# };
+class LoraApplyMode(IntEnum):
+    LORA_APPLY_AUTO = 0
+    LORA_APPLY_IMMEDIATELY = 1
+    LORA_APPLY_AT_RUNTIME = 2
+    LORA_APPLY_MODE_COUNT = 3
+
+
 # ===========================================
 # Inference
 # ===========================================
@@ -351,7 +364,7 @@ class Preview(IntEnum):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* qwen2vl_path; const char* qwen2vl_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum prediction_t prediction; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* qwen2vl_path; const char* qwen2vl_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -369,12 +382,15 @@ class sd_ctx_params_t(ctypes.Structure):
         ("lora_model_dir", ctypes.c_char_p),
         ("embedding_dir", ctypes.c_char_p),
         ("photo_maker_path", ctypes.c_char_p),
+        ("tensor_type_rules", ctypes.c_char_p),
         ("vae_decode_only", ctypes.c_bool),
         ("free_params_immediately", ctypes.c_bool),
         ("n_threads", ctypes.c_int),
         ("wtype", ctypes.c_int),  # GGMLType
         ("rng_type", ctypes.c_int),  # RNGType
+        ("sampler_rng_type", ctypes.c_int),  # RNGType
         ("prediction", ctypes.c_int),  # Prediction
+        ("lora_apply_mode", ctypes.c_int),  # LoraApplyMode
         ("offload_params_to_cpu", ctypes.c_bool),
         ("keep_clip_on_cpu", ctypes.c_bool),
         ("keep_control_net_on_cpu", ctypes.c_bool),
@@ -540,11 +556,26 @@ class sd_sample_params_t(ctypes.Structure):
 
 
 # -------------------------------------------
+# sd_easycache_params_t
+# -------------------------------------------
+
+
+# typedef struct { bool enabled; float reuse_threshold; float start_percent; float end_percent; } sd_easycache_params_t;
+class sd_easycache_params_t(ctypes.Structure):
+    _fields_ = [
+        ("enabled", ctypes.c_bool),
+        ("reuse_threshold", ctypes.c_float),
+        ("start_percent", ctypes.c_float),
+        ("end_percent", ctypes.c_float),
+    ]
+
+
+# -------------------------------------------
 # sd_img_gen_params_t
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; } sd_img_gen_params_t;
+# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; sd_easycache_params_t easycache; } sd_img_gen_params_t;
 class sd_img_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("prompt", ctypes.c_char_p),
@@ -566,6 +597,7 @@ class sd_img_gen_params_t(ctypes.Structure):
         ("control_strength", ctypes.c_float),
         ("pm_params", sd_pm_params_t),
         ("vae_tiling_params", sd_tiling_params_t),
+        ("easycache", sd_easycache_params_t),
     ]
 
 
@@ -595,7 +627,7 @@ def generate_image(
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; } sd_vid_gen_params_t;
+# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; sd_easycache_params_t easycache; } sd_vid_gen_params_t;
 class sd_vid_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("prompt", ctypes.c_char_p),
@@ -614,6 +646,7 @@ class sd_vid_gen_params_t(ctypes.Structure):
         ("seed", ctypes.c_int64),
         ("video_frames", ctypes.c_int),
         ("vace_strength", ctypes.c_float),
+        ("easycache", sd_easycache_params_t),
     ]
 
 
@@ -660,6 +693,25 @@ def sd_get_default_sample_method(
     sd_ctx: sd_ctx_t_p,
     /,
 ) -> Optional[SampleMethod]: ...
+
+
+# -------------------------------------------
+# sd_get_default_scheduler
+# -------------------------------------------
+
+
+# SD_API enum scheduler_t sd_get_default_scheduler(const sd_ctx_t* sd_ctx);
+@ctypes_function(
+    "sd_get_default_scheduler",
+    [
+        sd_ctx_t_p_ctypes,  # sd_ctx
+    ],
+    ctypes.c_int,  # Scheduler
+)
+def sd_get_default_scheduler(
+    sd_ctx: sd_ctx_t_p,
+    /,
+) -> Optional[Scheduler]: ...
 
 
 # -------------------------------------------
