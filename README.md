@@ -571,7 +571,7 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       diffusion_model_path="../models/qwen-image-Q8_0.gguf",
-      qwen2vl_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
+      llm_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
       vae_path="../models/qwen_image_vae.safetensors",
       offload_params_to_cpu=True,
       flow_shift=3,
@@ -606,7 +606,7 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       diffusion_model_path="../models/Qwen_Image_Edit-Q8_0.gguf",
-      qwen2vl_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
+      llm_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
       vae_path="../models/qwen_image_vae.safetensors",
       offload_params_to_cpu=True,
       flow_shift=3,

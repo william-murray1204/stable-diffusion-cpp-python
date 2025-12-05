@@ -225,6 +225,7 @@ class Scheduler(IntEnum):
 #     EDM_V_PRED,
 #     SD3_FLOW_PRED,
 #     FLUX_FLOW_PRED,
+#     FLUX2_FLOW_PRED,
 #     PREDICTION_COUNT
 # };
 class Prediction(IntEnum):
@@ -234,7 +235,8 @@ class Prediction(IntEnum):
     EDM_V_PRED = 3
     SD3_FLOW_PRED = 4
     FLUX_FLOW_PRED = 5
-    PREDICTION_COUNT = 6
+    FLUX2_FLOW_PRED = 6
+    PREDICTION_COUNT = 7
 
 
 # // same as enum ggml_type
@@ -364,7 +366,7 @@ class LoraApplyMode(IntEnum):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* qwen2vl_path; const char* qwen2vl_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -372,8 +374,8 @@ class sd_ctx_params_t(ctypes.Structure):
         ("clip_g_path", ctypes.c_char_p),
         ("clip_vision_path", ctypes.c_char_p),
         ("t5xxl_path", ctypes.c_char_p),
-        ("qwen2vl_path", ctypes.c_char_p),
-        ("qwen2vl_vision_path", ctypes.c_char_p),
+        ("llm_path", ctypes.c_char_p),
+        ("llm_vision_path", ctypes.c_char_p),
         ("diffusion_model_path", ctypes.c_char_p),
         ("high_noise_diffusion_model_path", ctypes.c_char_p),
         ("vae_path", ctypes.c_char_p),
@@ -937,19 +939,22 @@ def sd_set_progress_callback(
 # Preview
 # ===========================================
 
-# typedef void (*sd_preview_cb_t)(int step, int frame_count, sd_image_t* frames, bool is_noisy);
-sd_preview_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes.POINTER(sd_image_t), ctypes.c_bool)
+# typedef void (*sd_preview_cb_t)(int step, int frame_count, sd_image_t* frames, bool is_noisy, void* data);
+sd_preview_callback = ctypes.CFUNCTYPE(
+    None, ctypes.c_int, ctypes.c_int, ctypes.POINTER(sd_image_t), ctypes.c_bool, ctypes.c_void_p
+)
 
 
-# SD_API void sd_set_preview_callback(sd_preview_cb_t cb, preview_t mode, int interval, bool denoised, bool noisy);
+# SD_API void sd_set_preview_callback(sd_preview_cb_t cb, enum preview_t mode, int interval, bool denoised, bool noisy, void* data);
 @ctypes_function(
     "sd_set_preview_callback",
     [
         ctypes.c_void_p,  # sd_preview_cb_t
-        ctypes.c_int,  # preview_t mode
+        ctypes.c_int,  # mode
         ctypes.c_int,  # interval
         ctypes.c_bool,  # denoised
         ctypes.c_bool,  # noisy
+        ctypes.c_void_p,  # data
     ],
     None,
 )
@@ -959,6 +964,7 @@ def sd_set_preview_callback(
     interval: int,
     denoised: bool,
     noisy: bool,
+    data: ctypes.c_void_p,
     /,
 ):
     """Set callback for preview images during generation."""
