@@ -652,7 +652,7 @@ output = stable_diffusion.generate_image(
 
 ---
 
-#### <u>Z-Image</u>
+### <u>Z-Image</u>
 
 Download the weights from the links below:
 
