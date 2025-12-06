@@ -351,6 +351,36 @@ output = stable_diffusion.generate_image(
 )
 ```
 
+#### <u>FLUX.2</u>
+
+Download the weights from the links below:
+
+- Download `FLUX.2-dev`
+  - gguf: https://huggingface.co/city96/FLUX.2-dev-gguf/tree/main
+- Download `vae`
+  - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-dev/tree/main
+- Download `Mistral-Small-3.2-24B-Instruct-2506-GGUF`
+  - gguf: https://huggingface.co/unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF/tree/main
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/flux2-dev-Q4_K_M.gguf",
+      llm_path="../models/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf",
+      vae_path="../models/ae.safetensors",
+      offload_params_to_cpu=True,
+      diffusion_flash_attn=True,
+)
+
+output = stable_diffusion.generate_image(
+      prompt="the cat has a hat",
+      ref_images=["input.png"],
+      sample_steps=4,
+      cfg_scale=1.0,
+)
+```
+
 #### <u>With LoRA (FLUX)</u>
 
 LoRAs can be used with FLUX models in the same way as Stable Diffusion models ([as shown above](#with-lora-stable-diffusion)).
@@ -571,7 +601,7 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       diffusion_model_path="../models/qwen-image-Q8_0.gguf",
-      qwen2vl_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
+      llm_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
       vae_path="../models/qwen_image_vae.safetensors",
       offload_params_to_cpu=True,
       flow_shift=3,
@@ -606,7 +636,7 @@ from stable_diffusion_cpp import StableDiffusion
 
 stable_diffusion = StableDiffusion(
       diffusion_model_path="../models/Qwen_Image_Edit-Q8_0.gguf",
-      qwen2vl_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
+      llm_path="../models/Qwen2.5-VL-7B-Instruct.Q8_0.gguf",
       vae_path="../models/qwen_image_vae.safetensors",
       offload_params_to_cpu=True,
       flow_shift=3,
@@ -617,6 +647,40 @@ output = stable_diffusion.generate_image(
       ref_images=["input.png"],
       cfg_scale=2.5,
       sample_method='euler',
+)
+```
+
+---
+
+#### <u>Z-Image</u>
+
+Download the weights from the links below:
+
+- Download `Z-Image-Turbo`
+  - safetensors: https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/diffusion_models
+  - gguf: https://huggingface.co/leejet/Z-Image-Turbo-GGUF/tree/main
+- Download `vae`
+  - safetensors: https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main
+- Download `Qwen3 4b`
+  - safetensors: https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/text_encoders
+  - gguf: https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/tree/main
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/z_image_turbo-Q3_K.gguf",
+      llm_path="../models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      vae_path="../models/ae.safetensors",
+      offload_params_to_cpu=True,
+      diffusion_flash_attn=True,
+)
+
+output = stable_diffusion.generate_image(
+      prompt="A cinematic, melancholic photograph of a solitary hooded figure walking through a sprawling, rain-slicked metropolis at night. The city lights are a chaotic blur of neon orange and cool blue, reflecting on the wet asphalt. The scene evokes a sense of being a single component in a vast machine. Superimposed over the image in a sleek, modern, slightly glitched font is the philosophical quote: 'THE CITY IS A CIRCUIT BOARD, AND I AM A BROKEN TRANSISTOR.' -- moody, atmospheric, profound, dark academic",
+      height=1024,
+      width=512,
+      cfg_scale=1.0,
 )
 ```
 

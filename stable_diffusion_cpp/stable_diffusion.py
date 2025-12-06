@@ -32,8 +32,8 @@ class StableDiffusion:
         clip_g_path: str = "",
         clip_vision_path: str = "",
         t5xxl_path: str = "",
-        qwen2vl_path: str = "",
-        qwen2vl_vision_path: str = "",
+        llm_path: str = "",
+        llm_vision_path: str = "",
         diffusion_model_path: str = "",
         high_noise_diffusion_model_path: str = "",
         vae_path: str = "",
@@ -85,11 +85,11 @@ class StableDiffusion:
             clip_g_path: Path to the clip-g text encoder.
             clip_vision_path: Path to the clip-vision encoder.
             t5xxl_path: Path to the t5xxl text encoder.
-            qwen2vl_path: Path to the qwen2vl text encoder.
-            qwen2vl_vision_path: Path to the qwen2vl vit.
+            llm_path: Path to the llm text encoder (example: qwenvl2.5 for qwen-image, mistral-small3.2 for flux2).
+            llm_vision_path: Path to the llm vit.
             diffusion_model_path: Path to the standalone diffusion model.
             high_noise_diffusion_model_path: Path to the standalone high noise diffusion model.
-            vae_path: Path to the vae.
+            vae_path: Path to the standalone vae model.
             taesd_path: Path to the taesd. Using Tiny AutoEncoder for fast decoding (low quality).
             control_net_path: Path to the Control Net model.
             upscaler_path: Path to ESRGAN model (upscale images separately or after generation).
@@ -134,8 +134,8 @@ class StableDiffusion:
         self.clip_g_path = self._clean_path(clip_g_path)
         self.clip_vision_path = self._clean_path(clip_vision_path)
         self.t5xxl_path = self._clean_path(t5xxl_path)
-        self.qwen2vl_path = self._clean_path(qwen2vl_path)
-        self.qwen2vl_vision_path = self._clean_path(qwen2vl_vision_path)
+        self.llm_path = self._clean_path(llm_path)
+        self.llm_vision_path = self._clean_path(llm_vision_path)
         self.diffusion_model_path = self._clean_path(diffusion_model_path)
         self.high_noise_diffusion_model_path = self._clean_path(high_noise_diffusion_model_path)
         self.vae_path = self._clean_path(vae_path)
@@ -187,8 +187,8 @@ class StableDiffusion:
         self.wtype = self._validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
         self.rng_type = self._validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
         self.sampler_rng_type = self._validate_and_set_input(self.sampler_rng_type, RNG_TYPE_MAP, "sampler_rng_type")
-        self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
         self.lora_apply_mode = self._validate_and_set_input(self.lora_apply_mode, LORA_APPLY_MODE_MAP, "lora_apply_mode")
+        self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
 
         # -------------------------------------------
         # SD Model Loading
@@ -202,8 +202,8 @@ class StableDiffusion:
                     clip_g_path=self.clip_g_path,
                     clip_vision_path=self.clip_vision_path,
                     t5xxl_path=self.t5xxl_path,
-                    qwen2vl_path=self.qwen2vl_path,
-                    qwen2vl_vision_path=self.qwen2vl_vision_path,
+                    llm_path=self.llm_path,
+                    llm_vision_path=self.llm_vision_path,
                     diffusion_model_path=self.diffusion_model_path,
                     high_noise_diffusion_model_path=self.high_noise_diffusion_model_path,
                     vae_path=self.vae_path,
@@ -430,6 +430,8 @@ class StableDiffusion:
         # Set the Preview Callback Function
         # -------------------------------------------
 
+        preview_method = self._validate_and_set_input(preview_method, PREVIEW_MAP, "preview_method")
+
         if preview_callback is not None:
 
             @sd_cpp.sd_preview_callback
@@ -438,16 +440,18 @@ class StableDiffusion:
                 frame_count: int,
                 frames: sd_cpp.sd_image_t,
                 is_noisy: ctypes.c_bool,
+                data: ctypes.c_void_p,
             ):
                 pil_frames = self._sd_image_t_p_to_images(frames, frame_count, 1)
                 preview_callback(step, pil_frames, is_noisy)
 
             sd_cpp.sd_set_preview_callback(
                 sd_preview_callback,
-                self._validate_and_set_input(preview_method, PREVIEW_MAP, "preview_method"),
+                preview_method,
                 preview_interval,
                 not preview_noisy,
                 preview_noisy,
+                ctypes.c_void_p(0),
             )
 
         # -------------------------------------------
@@ -762,6 +766,8 @@ class StableDiffusion:
         # Set the Preview Callback Function
         # -------------------------------------------
 
+        preview_method = self._validate_and_set_input(preview_method, PREVIEW_MAP, "preview_method")
+
         if preview_callback is not None:
 
             @sd_cpp.sd_preview_callback
@@ -770,16 +776,18 @@ class StableDiffusion:
                 frame_count: int,
                 frames: sd_cpp.sd_image_t,
                 is_noisy: ctypes.c_bool,
+                data: ctypes.c_void_p,
             ):
                 pil_frames = self._sd_image_t_p_to_images(frames, frame_count, 1)
                 preview_callback(step, pil_frames, is_noisy)
 
             sd_cpp.sd_set_preview_callback(
                 sd_preview_callback,
-                self._validate_and_set_input(preview_method, PREVIEW_MAP, "preview_method"),
+                preview_method,
                 preview_interval,
                 not preview_noisy,
                 preview_noisy,
+                ctypes.c_void_p(0),
             )
 
         # -------------------------------------------
@@ -1550,13 +1558,13 @@ class StableDiffusion:
 
 RNG_TYPE_MAP = {
     "default": RNGType.STD_DEFAULT_RNG,
-    "cuda": RNGType.CUDA_RNG,
+    "cuda": RNGType.CUDA_RNG,  # Default
     "cpu": RNGType.CPU_RNG,
     "type_count": RNGType.RNG_TYPE_COUNT,
 }
 
 SAMPLE_METHOD_MAP = {
-    "default": None,
+    "default": None,  # Default
     "euler": SampleMethod.EULER_SAMPLE_METHOD,
     "euler_a": SampleMethod.EULER_A_SAMPLE_METHOD,
     "heun": SampleMethod.HEUN_SAMPLE_METHOD,
@@ -1573,7 +1581,7 @@ SAMPLE_METHOD_MAP = {
 }
 
 SCHEDULER_MAP = {
-    "default": None,
+    "default": None,  # Default
     "discrete": Scheduler.DISCRETE_SCHEDULER,
     "karras": Scheduler.KARRAS_SCHEDULER,
     "exponential": Scheduler.EXPONENTIAL_SCHEDULER,
@@ -1587,13 +1595,13 @@ SCHEDULER_MAP = {
 }
 
 PREDICTION_MAP = {
-    "default": Prediction.DEFAULT_PRED,
     "eps": Prediction.EPS_PRED,
     "v": Prediction.V_PRED,
     "edm_v": Prediction.EDM_V_PRED,
-    "sd3_flow": Prediction.SD3_FLOW_PRED,
+    "flow": Prediction.FLOW_PRED,
     "flux_flow": Prediction.FLUX_FLOW_PRED,
-    "prediction_count": Prediction.PREDICTION_COUNT,
+    "flux2_flow": Prediction.FLUX2_FLOW_PRED,
+    "default": Prediction.PREDICTION_COUNT,  # Default
 }
 
 GGML_TYPE_MAP = {
@@ -1636,12 +1644,11 @@ GGML_TYPE_MAP = {
     # "iq4_nl_4_8": GGMLType.SD_TYPE_IQ4_NL_4_8,
     # "iq4_nl_8_8": GGMLType.SD_TYPE_IQ4_NL_8_8,
     "mxfp4": GGMLType.SD_TYPE_MXFP4,
-    # Default
-    "default": GGMLType.SD_TYPE_COUNT,
+    "default": GGMLType.SD_TYPE_COUNT,  # Default
 }
 
 PREVIEW_MAP = {
-    "none": Preview.PREVIEW_NONE,
+    "none": Preview.PREVIEW_NONE,  # Default
     "proj": Preview.PREVIEW_PROJ,
     "tae": Preview.PREVIEW_TAE,
     "vae": Preview.PREVIEW_VAE,
@@ -1649,7 +1656,7 @@ PREVIEW_MAP = {
 }
 
 LORA_APPLY_MODE_MAP = {
-    "auto": LoraApplyMode.LORA_APPLY_AUTO,
+    "auto": LoraApplyMode.LORA_APPLY_AUTO,  # Default
     "immediately": LoraApplyMode.LORA_APPLY_IMMEDIATELY,
     "at_runtime": LoraApplyMode.LORA_APPLY_AT_RUNTIME,
     "lora_apply_mode_count": LoraApplyMode.LORA_APPLY_MODE_COUNT,

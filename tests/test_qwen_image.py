@@ -5,7 +5,7 @@ from stable_diffusion_cpp import StableDiffusion
 
 DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\qwen\\Qwen_Image-Q4_K_M.gguf"
 VAE_PATH = "F:\\stable-diffusion\\qwen\\qwen_image_vae.safetensors"
-QWEN2VL_PATH = "F:\\stable-diffusion\\qwen\\Qwen2.5-VL-7B-Instruct.Q8_0.gguf"
+LLM_PATH = "F:\\stable-diffusion\\qwen\\Qwen2.5-VL-7B-Instruct.Q8_0.gguf"
 
 
 PROMPT = '一个穿着"QWEN"标志的T恤的中国美女正拿着黑色的马克笔面相镜头微笑。她身后的玻璃板上手写体写着 “一、Qwen-Image的技术路线： 探索视觉生成基础模型的极限，开创理解与生成一体化的未来。二、Qwen-Image的模型特色：1、复杂文字渲染。支持中英渲染、自动布局； 2、精准图像编辑。支持文字编辑、物体增减、风格变换。三、Qwen-Image的未来愿景：赋能专业内容创作、助力生成式AI发展。”'
@@ -20,7 +20,7 @@ def test_qwen_image():
 
     stable_diffusion = StableDiffusion(
         diffusion_model_path=DIFFUSION_MODEL_PATH,
-        qwen2vl_path=QWEN2VL_PATH,
+        llm_path=LLM_PATH,
         vae_path=VAE_PATH,
         offload_params_to_cpu=True,
         flow_shift=FLOW_SHIFT,
@@ -61,8 +61,8 @@ def test_qwen_image():
 #     DIFFUSION_MODEL_PATH,
 #     "--vae",
 #     VAE_PATH,
-#     "--qwen2vl",
-#     QWEN2VL_PATH,
+#     "--llm",
+#     LLM_PATH,
 #     "--prompt",
 #     PROMPT,
 #     "--steps",

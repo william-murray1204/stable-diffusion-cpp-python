@@ -4,4 +4,4 @@ from .stable_diffusion import *
 
 # isort: on
 
-__version__ = "0.3.8"
+__version__ = "0.4.0"
