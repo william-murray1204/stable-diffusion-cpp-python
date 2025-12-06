@@ -219,24 +219,22 @@ class Scheduler(IntEnum):
 
 
 # enum prediction_t {
-#     DEFAULT_PRED,
 #     EPS_PRED,
 #     V_PRED,
 #     EDM_V_PRED,
-#     SD3_FLOW_PRED,
+#     FLOW_PRED,
 #     FLUX_FLOW_PRED,
 #     FLUX2_FLOW_PRED,
 #     PREDICTION_COUNT
 # };
 class Prediction(IntEnum):
-    DEFAULT_PRED = 0
-    EPS_PRED = 1
-    V_PRED = 2
-    EDM_V_PRED = 3
-    SD3_FLOW_PRED = 4
-    FLUX_FLOW_PRED = 5
-    FLUX2_FLOW_PRED = 6
-    PREDICTION_COUNT = 7
+    EPS_PRED = 0
+    V_PRED = 1
+    EDM_V_PRED = 2
+    FLOW_PRED = 3
+    FLUX_FLOW_PRED = 4
+    FLUX2_FLOW_PRED = 5
+    PREDICTION_COUNT = 6
 
 
 # // same as enum ggml_type
@@ -878,17 +876,17 @@ def preprocess_canny(
 # ===========================================
 
 # -------------------------------------------
-# get_num_physical_cores
+# sd_get_num_physical_cores
 # -------------------------------------------
 
 
-# SD_API int32_t get_num_physical_cores();
+# SD_API int32_t sd_get_num_physical_cores();
 @ctypes_function(
-    "get_num_physical_cores",
+    "sd_get_num_physical_cores",
     [],
     ctypes.c_int32,
 )
-def get_num_physical_cores() -> int:
+def sd_get_num_physical_cores() -> int:
     """Get the number of physical cores"""
     ...
 

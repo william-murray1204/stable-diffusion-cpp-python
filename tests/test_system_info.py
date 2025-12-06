@@ -6,7 +6,7 @@ import stable_diffusion_cpp.stable_diffusion_cpp as sd_cpp
 def test_system_info():
     # Get system info
     system_info = sd_cpp.sd_get_system_info()
-    num_physical_cores = sd_cpp.get_num_physical_cores()
+    num_physical_cores = sd_cpp.sd_get_num_physical_cores()
 
     # Print system info
     print("System info: ", system_info)

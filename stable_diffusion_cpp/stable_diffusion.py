@@ -187,8 +187,8 @@ class StableDiffusion:
         self.wtype = self._validate_and_set_input(self.wtype, GGML_TYPE_MAP, "wtype")
         self.rng_type = self._validate_and_set_input(self.rng_type, RNG_TYPE_MAP, "rng_type")
         self.sampler_rng_type = self._validate_and_set_input(self.sampler_rng_type, RNG_TYPE_MAP, "sampler_rng_type")
-        self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
         self.lora_apply_mode = self._validate_and_set_input(self.lora_apply_mode, LORA_APPLY_MODE_MAP, "lora_apply_mode")
+        self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
 
         # -------------------------------------------
         # SD Model Loading
@@ -1558,13 +1558,13 @@ class StableDiffusion:
 
 RNG_TYPE_MAP = {
     "default": RNGType.STD_DEFAULT_RNG,
-    "cuda": RNGType.CUDA_RNG,
+    "cuda": RNGType.CUDA_RNG,  # Default
     "cpu": RNGType.CPU_RNG,
     "type_count": RNGType.RNG_TYPE_COUNT,
 }
 
 SAMPLE_METHOD_MAP = {
-    "default": None,
+    "default": None,  # Default
     "euler": SampleMethod.EULER_SAMPLE_METHOD,
     "euler_a": SampleMethod.EULER_A_SAMPLE_METHOD,
     "heun": SampleMethod.HEUN_SAMPLE_METHOD,
@@ -1581,7 +1581,7 @@ SAMPLE_METHOD_MAP = {
 }
 
 SCHEDULER_MAP = {
-    "default": None,
+    "default": None,  # Default
     "discrete": Scheduler.DISCRETE_SCHEDULER,
     "karras": Scheduler.KARRAS_SCHEDULER,
     "exponential": Scheduler.EXPONENTIAL_SCHEDULER,
@@ -1595,14 +1595,13 @@ SCHEDULER_MAP = {
 }
 
 PREDICTION_MAP = {
-    "default": Prediction.DEFAULT_PRED,
     "eps": Prediction.EPS_PRED,
     "v": Prediction.V_PRED,
     "edm_v": Prediction.EDM_V_PRED,
-    "sd3_flow": Prediction.SD3_FLOW_PRED,
+    "flow": Prediction.FLOW_PRED,
     "flux_flow": Prediction.FLUX_FLOW_PRED,
     "flux2_flow": Prediction.FLUX2_FLOW_PRED,
-    "prediction_count": Prediction.PREDICTION_COUNT,
+    "default": Prediction.PREDICTION_COUNT,  # Default
 }
 
 GGML_TYPE_MAP = {
@@ -1645,12 +1644,11 @@ GGML_TYPE_MAP = {
     # "iq4_nl_4_8": GGMLType.SD_TYPE_IQ4_NL_4_8,
     # "iq4_nl_8_8": GGMLType.SD_TYPE_IQ4_NL_8_8,
     "mxfp4": GGMLType.SD_TYPE_MXFP4,
-    # Default
-    "default": GGMLType.SD_TYPE_COUNT,
+    "default": GGMLType.SD_TYPE_COUNT,  # Default
 }
 
 PREVIEW_MAP = {
-    "none": Preview.PREVIEW_NONE,
+    "none": Preview.PREVIEW_NONE,  # Default
     "proj": Preview.PREVIEW_PROJ,
     "tae": Preview.PREVIEW_TAE,
     "vae": Preview.PREVIEW_VAE,
@@ -1658,7 +1656,7 @@ PREVIEW_MAP = {
 }
 
 LORA_APPLY_MODE_MAP = {
-    "auto": LoraApplyMode.LORA_APPLY_AUTO,
+    "auto": LoraApplyMode.LORA_APPLY_AUTO,  # Default
     "immediately": LoraApplyMode.LORA_APPLY_IMMEDIATELY,
     "at_runtime": LoraApplyMode.LORA_APPLY_AT_RUNTIME,
     "lora_apply_mode_count": LoraApplyMode.LORA_APPLY_MODE_COUNT,
