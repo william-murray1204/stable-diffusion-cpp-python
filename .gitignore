@@ -161,10 +161,3 @@ cython_debug/
 tests/outputs/
 temp/
 lib/
-
-*.local
-.python-version
-_skbuild/
-.envrc
-.direnv
-models/
