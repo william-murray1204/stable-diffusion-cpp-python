@@ -54,7 +54,6 @@ sdist.include = [
 sdist.exclude = [
     "assets",
     "vendor/stable-diffusion.cpp/assets",
-    # Exclude ALL objects
     ".git/objects/**",
     "vendor/stable-diffusion.cpp/.git/objects/**",
     ".git/logs/**",
