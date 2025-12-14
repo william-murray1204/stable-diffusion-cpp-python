@@ -1,9 +1,12 @@
 import os
+import re
 import ctypes
 import random
 import contextlib
 import multiprocessing
+from ctypes import c_uint32
 from typing import Dict, List, Union, Callable, Optional
+from pathlib import Path
 
 from PIL import Image
 
@@ -40,8 +43,9 @@ class StableDiffusion:
         taesd_path: str = "",
         control_net_path: str = "",
         upscaler_path: str = "",
+        upscale_tile_size: int = 128,
         lora_model_dir: str = "",
-        embedding_dir: str = "",
+        embedding_paths: List[str] = [],
         photo_maker_path: str = "",
         tensor_type_rules: str = "",
         vae_decode_only: bool = False,
@@ -93,8 +97,9 @@ class StableDiffusion:
             taesd_path: Path to the taesd. Using Tiny AutoEncoder for fast decoding (low quality).
             control_net_path: Path to the Control Net model.
             upscaler_path: Path to ESRGAN model (upscale images separately or after generation).
+            upscale_tile_size: Tile size for upscaler model.
             lora_model_dir: Lora model directory.
-            embedding_dir: Path to embeddings.
+            embedding_paths: List of paths to embedding files.
             photo_maker_path: Path to PhotoMaker model.
             tensor_type_rules: Weight type per tensor pattern (example: "^vae\\.=f16,model\\.=q8_0")
             vae_decode_only: Process vae in decode only mode.
@@ -142,8 +147,9 @@ class StableDiffusion:
         self.taesd_path = self._clean_path(taesd_path)
         self.control_net_path = self._clean_path(control_net_path)
         self.upscaler_path = self._clean_path(upscaler_path)
+        self.upscale_tile_size = upscale_tile_size
         self.lora_model_dir = self._clean_path(lora_model_dir)
-        self.embedding_dir = self._clean_path(embedding_dir)
+        self.embedding_paths = [self._clean_path(p) for p in embedding_paths]
         self.photo_maker_path = self._clean_path(photo_maker_path)
         self.tensor_type_rules = tensor_type_rules
         self.vae_decode_only = vae_decode_only
@@ -191,6 +197,31 @@ class StableDiffusion:
         self.prediction = self._validate_and_set_input(self.prediction, PREDICTION_MAP, "prediction")
 
         # -------------------------------------------
+        # Embeddings
+        # -------------------------------------------
+
+        _embedding_items = []
+        for p in self.embedding_paths:
+            path = Path(p)
+            if not path.is_file():
+                raise ValueError(f"Embedding not found: {p}")
+
+            _embedding_items.append(
+                sd_cpp.sd_embedding_t(
+                    name=path.stem.encode("utf-8"),  # Filename minus extension
+                    path=str(path).encode("utf-8"),
+                )
+            )
+
+        if _embedding_items:
+            EmbeddingArrayType = sd_cpp.sd_embedding_t * len(self._embedding_items)
+            _embedding_array = EmbeddingArrayType(*self._embedding_items)
+            _embedding_count = c_uint32(len(self._embedding_items))
+        else:
+            _embedding_array = None
+            _embedding_count = c_uint32(0)
+
+        # -------------------------------------------
         # SD Model Loading
         # -------------------------------------------
 
@@ -210,7 +241,8 @@ class StableDiffusion:
                     taesd_path=self.taesd_path,
                     control_net_path=self.control_net_path,
                     lora_model_dir=self.lora_model_dir,
-                    embedding_dir=self.embedding_dir,
+                    embeddings=_embedding_array,
+                    embedding_count=_embedding_count,
                     photo_maker_path=self.photo_maker_path,
                     tensor_type_rules=self.tensor_type_rules,
                     vae_decode_only=self.vae_decode_only,
@@ -249,6 +281,7 @@ class StableDiffusion:
                     offload_params_to_cpu=self.offload_params_to_cpu,
                     direct=self.diffusion_conv_direct,  # Use diffusion_conv_direct
                     n_threads=self.n_threads,
+                    tile_size=self.upscale_tile_size,
                     verbose=self.verbose,
                 )
             )
@@ -292,6 +325,7 @@ class StableDiffusion:
         sample_steps: int = 20,
         eta: float = 0.0,
         timestep_shift: int = 0,
+        sigmas: Optional[str] = None,
         # slg_params
         skip_layers: List[int] = [7, 8, 9],
         skip_layer_start: float = 0.01,
@@ -341,6 +375,7 @@ class StableDiffusion:
             sample_steps: Number of sample steps.
             eta: Eta in DDIM, only for DDIM and TCD.
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
+            sigmas: Custom sigma values for the sampler, comma-separated (e.g. "14.61,7.8,3.5,0.0").
             skip_layers: Layers to skip for SLG steps (SLG will be enabled at step int([STEPS]x[START]) and disabled at int([STEPS]x[END])).
             skip_layer_start: SLG enabling point.
             skip_layer_end: SLG disabling point.
@@ -455,6 +490,15 @@ class StableDiffusion:
             )
 
         # -------------------------------------------
+        # Extract Loras
+        # -------------------------------------------
+
+        _prompt_without_loras, _lora_array, _lora_count, _lora_string_buffers = self._extract_and_build_loras(
+            prompt,
+            self.lora_model_dir,
+        )
+
+        # -------------------------------------------
         # Reference Images
         # -------------------------------------------
 
@@ -481,6 +525,16 @@ class StableDiffusion:
         sample_method = self._validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method", allow_none=True)
         if sample_method is None:
             sample_method = sd_cpp.sd_get_default_sample_method(self.model)
+
+        # -------------------------------------------
+        # Sigmas
+        # -------------------------------------------
+
+        _custom_sigmas = self._parse_sigmas(sigmas)
+        _custom_sigmas_count = len(_custom_sigmas)
+
+        SigmasArrayType = ctypes.c_float * _custom_sigmas_count
+        _custom_sigmas = ctypes.cast(SigmasArrayType(*_custom_sigmas), ctypes.POINTER(ctypes.c_float))
 
         # -------------------------------------------
         # Parameters
@@ -529,10 +583,14 @@ class StableDiffusion:
             sample_steps=sample_steps,
             eta=eta,
             shifted_timestep=timestep_shift,
+            custom_sigmas=_custom_sigmas,
+            custom_sigmas_count=_custom_sigmas_count,
         )
 
         _params = sd_cpp.sd_img_gen_params_t(
-            prompt=prompt.encode("utf-8"),
+            loras=_lora_array,
+            lora_count=_lora_count,
+            prompt=_prompt_without_loras.encode("utf-8"),
             negative_prompt=negative_prompt.encode("utf-8"),
             clip_skip=clip_skip,
             init_image=self._format_init_image(init_image, width, height),
@@ -618,6 +676,7 @@ class StableDiffusion:
         sample_steps: int = 20,
         eta: float = 0.0,
         timestep_shift: int = 0,
+        sigmas: Optional[str] = None,
         # slg_params
         skip_layers: List[int] = [7, 8, 9],
         skip_layer_start: float = 0.01,
@@ -672,6 +731,7 @@ class StableDiffusion:
             sample_steps: Number of sample steps.
             eta: Eta in DDIM, only for DDIM and TCD.
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
+            sigmas: Custom sigma values for the sampler, comma-separated (e.g. "14.61,7.8,3.5,0.0").
             skip_layers: Layers to skip for SLG steps (SLG will be enabled at step int([STEPS]x[START]) and disabled at int([STEPS]x[END])).
             skip_layer_start: SLG enabling point.
             skip_layer_end: SLG disabling point.
@@ -791,6 +851,15 @@ class StableDiffusion:
             )
 
         # -------------------------------------------
+        # Extract Loras
+        # -------------------------------------------
+
+        _prompt_without_loras, _lora_array, _lora_count, _lora_string_buffers = self._extract_and_build_loras(
+            prompt,
+            self.lora_model_dir,
+        )
+
+        # -------------------------------------------
         # Control Frames
         # -------------------------------------------
 
@@ -833,6 +902,16 @@ class StableDiffusion:
             high_noise_sample_method = sample_method
 
         # -------------------------------------------
+        # Sigmas
+        # -------------------------------------------
+
+        _custom_sigmas = self._parse_sigmas(sigmas)
+        _custom_sigmas_count = len(_custom_sigmas)
+
+        SigmasArrayType = ctypes.c_float * _custom_sigmas_count
+        _custom_sigmas = ctypes.cast(SigmasArrayType(*_custom_sigmas), ctypes.POINTER(ctypes.c_float))
+
+        # -------------------------------------------
         #  High Noise Parameters
         # -------------------------------------------
 
@@ -856,6 +935,8 @@ class StableDiffusion:
             sample_steps=high_noise_sample_steps,
             eta=high_noise_eta,
             shifted_timestep=timestep_shift,
+            custom_sigmas=_custom_sigmas,
+            custom_sigmas_count=_custom_sigmas_count,
         )
 
         # -------------------------------------------
@@ -889,10 +970,14 @@ class StableDiffusion:
             sample_steps=sample_steps,
             eta=eta,
             shifted_timestep=timestep_shift,
+            custom_sigmas=_custom_sigmas,
+            custom_sigmas_count=_custom_sigmas_count,
         )
 
         _params = sd_cpp.sd_vid_gen_params_t(
-            prompt=prompt.encode("utf-8"),
+            loras=_lora_array,
+            lora_count=_lora_count,
+            prompt=_prompt_without_loras.encode("utf-8"),
             negative_prompt=negative_prompt.encode("utf-8"),
             clip_skip=clip_skip,
             init_image=self._format_init_image(init_image, width, height),
@@ -1132,6 +1217,122 @@ class StableDiffusion:
     # ===========================================
     # Input Formatting and Validation
     # ===========================================
+
+    # -------------------------------------------
+    # Extract and Remove Lora
+    # -------------------------------------------
+
+    def _extract_and_build_loras(self, prompt: str, lora_model_dir: str):
+        re_lora = re.compile(r"<lora:([^:>]+):([^>]+)>")
+        valid_ext = [".pt", ".safetensors", ".gguf"]
+
+        lora_map = {}
+        high_noise_lora_map = {}
+
+        tmp = prompt
+
+        while True:
+            m = re_lora.search(tmp)
+            if not m:
+                break
+
+            raw_path = m.group(1)
+            raw_mul = m.group(2)
+
+            try:
+                mul = float(raw_mul)
+            except ValueError:
+                prompt = re_lora.sub("", prompt, count=1)
+                tmp = tmp[m.end() :]
+                continue
+
+            is_high_noise = False
+            prefix = "|high_noise|"
+
+            if raw_path.startswith(prefix):
+                raw_path = raw_path[len(prefix) :]
+                is_high_noise = True
+
+            path = Path(raw_path)
+            final_path = path if path.is_absolute() else Path(lora_model_dir) / path
+
+            if not final_path.exists():
+                found = False
+                for ext in valid_ext:
+                    try_path = final_path.with_suffix(final_path.suffix + ext)
+                    if try_path.exists():
+                        final_path = try_path
+                        found = True
+                        break
+                if not found:
+                    log_event(level=1, message=f"Can not find lora {final_path}")
+                    prompt = re_lora.sub("", prompt, count=1)
+                    tmp = tmp[m.end() :]
+                    continue
+
+            key = str(final_path.resolve())
+            target = high_noise_lora_map if is_high_noise else lora_map
+            target[key] = target.get(key, 0.0) + mul
+
+            prompt = re_lora.sub("", prompt, count=1)
+            tmp = tmp[m.end() :]
+
+        # Build ctypes array
+        all_items = []
+        for path, mul in lora_map.items():
+            all_items.append((False, mul, path))
+
+        for path, mul in high_noise_lora_map.items():
+            all_items.append((True, mul, path))
+
+        count = len(all_items)
+        LoraArray = sd_cpp.sd_lora_t * count
+        lora_array = LoraArray()
+
+        # IMPORTANT: keep string buffers alive
+        string_buffers = []
+
+        for i, (is_high_noise, mul, path) in enumerate(all_items):
+            buf = ctypes.create_string_buffer(path.encode("utf-8"))
+            string_buffers.append(buf)
+
+            lora_array[i].is_high_noise = is_high_noise
+            lora_array[i].multiplier = mul
+            lora_array[i].path = ctypes.cast(buf, ctypes.c_char_p)
+
+        return prompt, lora_array, count, string_buffers
+
+    # -------------------------------------------
+    # Parse Sigmas
+    # -------------------------------------------
+
+    def _parse_sigmas(self, sigmas: str) -> list[float]:
+        if not sigmas:
+            return []
+
+        # Strip surrounding brackets
+        sigmas = sigmas.strip()
+        if sigmas.startswith("["):
+            sigmas = sigmas[1:]
+        if sigmas.endswith("]"):
+            sigmas = sigmas[:-1]
+
+        custom_sigmas: list[float] = []
+
+        for item in sigmas.split(","):
+            item = item.strip()
+            if not item:
+                continue
+
+            try:
+                custom_sigmas.append(float(item))
+            except ValueError as e:
+                raise ValueError(f"Invalid float value '{item}' in sigmas") from e
+
+        if not custom_sigmas and sigmas:
+            raise ValueError(f"Could not parse any sigma values from '{sigmas}'")
+
+        return custom_sigmas
 
     # -------------------------------------------
     # Parse EasyCache

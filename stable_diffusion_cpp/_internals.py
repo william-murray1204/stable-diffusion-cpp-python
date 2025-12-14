@@ -31,7 +31,8 @@ class _StableDiffusionModel:
         taesd_path: str,
         control_net_path: str,
         lora_model_dir: str,
-        embedding_dir: str,
+        embeddings: ctypes.Array[sd_cpp.sd_embedding_t],
+        embedding_count: int,
         photo_maker_path: str,
         tensor_type_rules: str,
         vae_decode_only: bool,
@@ -72,7 +73,8 @@ class _StableDiffusionModel:
             taesd_path=taesd_path.encode("utf-8"),
             control_net_path=control_net_path.encode("utf-8"),
             lora_model_dir=lora_model_dir.encode("utf-8"),
-            embedding_dir=embedding_dir.encode("utf-8"),
+            embeddings=embeddings,
+            embedding_count=embedding_count,
             photo_maker_path=photo_maker_path.encode("utf-8"),
             tensor_type_rules=tensor_type_rules.encode("utf-8"),
             vae_decode_only=vae_decode_only,
@@ -153,12 +155,14 @@ class _UpscalerModel:
         offload_params_to_cpu: bool,
         direct: bool,
         n_threads: int,
+        tile_size: int,
         verbose: bool,
     ):
         self.upscaler_path = upscaler_path
         self.offload_params_to_cpu = offload_params_to_cpu
         self.direct = direct
         self.n_threads = n_threads
+        self.tile_size = tile_size
         self.verbose = verbose
         self._exit_stack = ExitStack()
 
@@ -179,6 +183,7 @@ class _UpscalerModel:
                 self.offload_params_to_cpu,
                 self.direct,
                 self.n_threads,
+                self.tile_size,
             )
 
             # Check if the model was loaded successfully

@@ -360,11 +360,24 @@ class LoraApplyMode(IntEnum):
 
 
 # -------------------------------------------
+# sd_embedding_t
+# -------------------------------------------
+
+
+# typedef struct { const char* name; const char* path; } sd_embedding_t;
+class sd_embedding_t(ctypes.Structure):
+    _fields_ = [
+        ("name", ctypes.c_char_p),
+        ("path", ctypes.c_char_p),
+    ]
+
+
+# -------------------------------------------
 # sd_ctx_params_t
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const char* embedding_dir; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -380,7 +393,8 @@ class sd_ctx_params_t(ctypes.Structure):
         ("taesd_path", ctypes.c_char_p),
         ("control_net_path", ctypes.c_char_p),
         ("lora_model_dir", ctypes.c_char_p),
-        ("embedding_dir", ctypes.c_char_p),
+        ("embeddings", ctypes.POINTER(sd_embedding_t)),
+        ("embedding_count", ctypes.c_uint32),
         ("photo_maker_path", ctypes.c_char_p),
         ("tensor_type_rules", ctypes.c_char_p),
         ("vae_decode_only", ctypes.c_bool),
@@ -543,7 +557,7 @@ class sd_guidance_params_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { sd_guidance_params_t guidance; enum scheduler_t scheduler; enum sample_method_t sample_method; int sample_steps; float eta; int shifted_timestep; } sd_sample_params_t;
+# typedef struct { sd_guidance_params_t guidance; enum scheduler_t scheduler; enum sample_method_t sample_method; int sample_steps; float eta; int shifted_timestep; float* custom_sigmas; int custom_sigmas_count; } sd_sample_params_t;
 class sd_sample_params_t(ctypes.Structure):
     _fields_ = [
         ("guidance", sd_guidance_params_t),
@@ -552,6 +566,8 @@ class sd_sample_params_t(ctypes.Structure):
         ("sample_steps", ctypes.c_int),
         ("eta", ctypes.c_float),
         ("shifted_timestep", ctypes.c_int),
+        ("custom_sigmas", ctypes.POINTER(ctypes.c_float)),
+        ("custom_sigmas_count", ctypes.c_int),
     ]
 
 
@@ -571,13 +587,29 @@ class sd_easycache_params_t(ctypes.Structure):
 
 
 # -------------------------------------------
+# sd_lora_t
+# -------------------------------------------
+
+
+# typedef struct { bool is_high_noise; float multiplier; const char* path; } sd_lora_t;
+class sd_lora_t(ctypes.Structure):
+    _fields_ = [
+        ("is_high_noise", ctypes.c_bool),
+        ("multiplier", ctypes.c_float),
+        ("path", ctypes.c_char_p),
+    ]
+
+
+# -------------------------------------------
 # sd_img_gen_params_t
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; sd_easycache_params_t easycache; } sd_img_gen_params_t;
+# typedef struct { const sd_lora_t* loras; uint32_t lora_count; const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; sd_easycache_params_t easycache; } sd_img_gen_params_t;
 class sd_img_gen_params_t(ctypes.Structure):
     _fields_ = [
+        ("loras", ctypes.POINTER(sd_lora_t)),
+        ("lora_count", ctypes.c_uint32),
         ("prompt", ctypes.c_char_p),
         ("negative_prompt", ctypes.c_char_p),
         ("clip_skip", ctypes.c_int),
@@ -627,9 +659,11 @@ def generate_image(
 # -------------------------------------------
 
 
-# typedef struct { const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; sd_easycache_params_t easycache; } sd_vid_gen_params_t;
+# typedef struct { const sd_lora_t* loras; uint32_t lora_count; const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; sd_easycache_params_t easycache; } sd_vid_gen_params_t;
 class sd_vid_gen_params_t(ctypes.Structure):
     _fields_ = [
+        ("loras", ctypes.POINTER(sd_lora_t)),
+        ("lora_count", ctypes.c_uint32),
         ("prompt", ctypes.c_char_p),
         ("negative_prompt", ctypes.c_char_p),
         ("clip_skip", ctypes.c_int),
@@ -734,7 +768,7 @@ upscaler_ctx_t_p_ctypes = ctypes.POINTER(upscaler_ctx_t)
 # -------------------------------------------
 
 
-# SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, bool offload_params_to_cpu, bool direct, int n_threads);
+# SD_API upscaler_ctx_t* new_upscaler_ctx(const char* esrgan_path, bool offload_params_to_cpu, bool direct, int n_threads, int tile_size);
 @ctypes_function(
     "new_upscaler_ctx",
     [
@@ -742,6 +776,7 @@ upscaler_ctx_t_p_ctypes = ctypes.POINTER(upscaler_ctx_t)
         ctypes.c_bool,  # offload_params_to_cpu
         ctypes.c_bool,  # direct
         ctypes.c_int,  # n_threads
+        ctypes.c_int,  # tile_size
     ],
     upscaler_ctx_t_p_ctypes,
 )
@@ -750,6 +785,7 @@ def new_upscaler_ctx(
     offload_params_to_cpu: bool,
     direct: bool,
     n_threads: int,
+    tile_size: int,
     /,
 ) -> upscaler_ctx_t_p: ...
 
@@ -904,6 +940,38 @@ def sd_get_num_physical_cores() -> int:
 )
 def sd_get_system_info() -> bytes:
     """Get the Stable diffusion system information"""
+    ...
+
+
+# -------------------------------------------
+# sd_commit
+# -------------------------------------------
+
+
+# SD_API const char* sd_commit(void);
+@ctypes_function(
+    "sd_commit",
+    [],
+    ctypes.c_char_p,
+)
+def sd_commit() -> bytes:
+    """Get the Stable diffusion commit hash"""
+    ...
+
+
+# -------------------------------------------
+# sd_version
+# -------------------------------------------
+
+
+# SD_API const char* sd_version(void);
+@ctypes_function(
+    "sd_version",
+    [],
+    ctypes.c_char_p,
+)
+def sd_version() -> bytes:
+    """Get the Stable diffusion version string"""
     ...
 
 
