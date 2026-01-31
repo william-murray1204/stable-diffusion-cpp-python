@@ -5,7 +5,7 @@ import random
 import contextlib
 import multiprocessing
 from ctypes import c_uint32
-from typing import Dict, List, Union, Callable, Optional
+from typing import Dict, List, Union, Literal, Callable, Optional
 from pathlib import Path
 
 from PIL import Image
@@ -20,6 +20,7 @@ from stable_diffusion_cpp import (
     GGMLType,
     Scheduler,
     Prediction,
+    SDCacheMode,
     SampleMethod,
     LoraApplyMode,
 )
@@ -56,6 +57,7 @@ class StableDiffusion:
         prediction: Union[str, Prediction, int, float] = "default",
         lora_apply_mode: Union[str, LoraApplyMode, int, float] = "auto",
         offload_params_to_cpu: bool = False,
+        enable_mmap: bool = False,
         keep_clip_on_cpu: bool = False,
         keep_control_net_on_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
@@ -63,10 +65,13 @@ class StableDiffusion:
         tae_preview_only: bool = False,
         diffusion_conv_direct: bool = False,
         vae_conv_direct: bool = False,
+        circular_x: bool = False,
+        circular_y: bool = False,
         force_sdxl_vae_conv_scale: bool = False,
         chroma_use_dit_mask: bool = True,
         chroma_use_t5_mask: bool = False,
         chroma_t5_mask_pad: int = 1,
+        qwen_image_zero_cond_t: bool = False,
         flow_shift: float = float("inf"),
         image_resize_method: str = "crop",
         verbose: bool = True,
@@ -110,6 +115,7 @@ class StableDiffusion:
             prediction: Prediction type override.
             lora_apply_mode: The way to apply LoRA, (default: "auto"). In auto mode, if the model weights contain any quantized parameters, the "at_runtime" mode will be used; otherwise, "immediately" will be used. The "immediately" mode may have precision and compatibility issues with quantized parameters, but it usually offers faster inference speed and, in some cases, lower memory usage. The "at_runtime" mode, on the other hand, is exactly the opposite.
             offload_params_to_cpu: Place the weights in RAM to save VRAM, and automatically load them into VRAM when needed.
+            enable_mmap: Whether to memory-map model.
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_on_cpu: Keep Control Net in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
@@ -117,10 +123,13 @@ class StableDiffusion:
             tae_preview_only: Prevents usage of taesd for decoding the final image (for use with preview="tae").
             diffusion_conv_direct: Use Conv2d direct in the diffusion model. May crash if backend not supported.
             vae_conv_direct: Use Conv2d direct in the vae model (should improve performance). May crash if backend not supported.
+            circular_x: Enable circular RoPE wrapping on x-axis (width) only.
+            circular_y: Enable circular RoPE wrapping on y-axis (height) only.
             force_sdxl_vae_conv_scale: Force use of conv scale on SDXL vae.
             chroma_use_dit_mask: Use DiT mask for Chroma.
             chroma_use_t5_mask: Use T5 mask for Chroma.
             chroma_t5_mask_pad: T5 mask padding size of Chroma.
+            qwen_image_zero_cond_t: Enable zero_cond_t for Qwen image.
             flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
             image_resize_method: Method to resize images for init, mask, control and reference images ("crop" or "resize").
             verbose: Print verbose output.
@@ -160,6 +169,7 @@ class StableDiffusion:
         self.prediction = prediction
         self.lora_apply_mode = lora_apply_mode
         self.offload_params_to_cpu = offload_params_to_cpu
+        self.enable_mmap = enable_mmap
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_on_cpu = keep_control_net_on_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
@@ -167,10 +177,13 @@ class StableDiffusion:
         self.tae_preview_only = tae_preview_only
         self.diffusion_conv_direct = diffusion_conv_direct
         self.vae_conv_direct = vae_conv_direct
+        self.circular_x = circular_x
+        self.circular_y = circular_y
         self.force_sdxl_vae_conv_scale = force_sdxl_vae_conv_scale
         self.chroma_use_dit_mask = chroma_use_dit_mask
         self.chroma_use_t5_mask = chroma_use_t5_mask
         self.chroma_t5_mask_pad = chroma_t5_mask_pad
+        self.qwen_image_zero_cond_t = qwen_image_zero_cond_t
         self.flow_shift = flow_shift
         self.image_resize_method = image_resize_method
         self._stack = contextlib.ExitStack()
@@ -240,7 +253,6 @@ class StableDiffusion:
                     vae_path=self.vae_path,
                     taesd_path=self.taesd_path,
                     control_net_path=self.control_net_path,
-                    lora_model_dir=self.lora_model_dir,
                     embeddings=_embedding_array,
                     embedding_count=_embedding_count,
                     photo_maker_path=self.photo_maker_path,
@@ -253,6 +265,7 @@ class StableDiffusion:
                     prediction=self.prediction,
                     lora_apply_mode=self.lora_apply_mode,
                     offload_params_to_cpu=self.offload_params_to_cpu,
+                    enable_mmap=self.enable_mmap,
                     keep_clip_on_cpu=self.keep_clip_on_cpu,
                     keep_control_net_on_cpu=self.keep_control_net_on_cpu,
                     keep_vae_on_cpu=self.keep_vae_on_cpu,
@@ -260,10 +273,13 @@ class StableDiffusion:
                     tae_preview_only=self.tae_preview_only,
                     diffusion_conv_direct=self.diffusion_conv_direct,
                     vae_conv_direct=self.vae_conv_direct,
+                    circular_x=self.circular_x,
+                    circular_y=self.circular_y,
                     force_sdxl_vae_conv_scale=self.force_sdxl_vae_conv_scale,
                     chroma_use_dit_mask=self.chroma_use_dit_mask,
                     chroma_use_t5_mask=self.chroma_use_t5_mask,
                     chroma_t5_mask_pad=self.chroma_t5_mask_pad,
+                    qwen_image_zero_cond_t=self.qwen_image_zero_cond_t,
                     flow_shift=self.flow_shift,
                     verbose=self.verbose,
                 )
@@ -344,8 +360,24 @@ class StableDiffusion:
         vae_tile_overlap: float = 0.5,
         vae_tile_size: Optional[Union[int, str]] = "0x0",
         vae_relative_tile_size: Optional[Union[float, str]] = "0x0",
-        easycache: bool = False,
-        easycache_options: str = "0.2,0.15,0.95",
+        # ---
+        cache_mode: Union[str, SDCacheMode, int, float, None] = "disabled",
+        cache_reuse_threshold: float = 1.0,
+        cache_start_percent: float = 0.15,
+        cache_end_percent: float = 0.95,
+        cache_error_decay_rate: float = 1.0,
+        cache_use_relative_threshold: bool = True,
+        cache_reset_error_on_compute: bool = True,
+        cache_Fn_compute_blocks: int = 8,
+        cache_Bn_compute_blocks: int = 0,
+        cache_residual_diff_threshold: float = 0.08,
+        cache_max_warmup_steps: int = 8,
+        cache_max_continuous_cached_steps: int = -1,
+        cache_taylorseer_n_derivatives: int = 1,
+        cache_taylorseer_skip_interval: int = 1,
+        scm_mask: str = "",
+        scm_policy: Literal["dynamic", "static"] = "dynamic",
+        # ---
         canny: bool = False,
         upscale_factor: int = 1,
         preview_method: Union[str, Preview, int, float] = "none",
@@ -392,8 +424,9 @@ class StableDiffusion:
             vae_tile_overlap: Tile overlap for vae tiling, in fraction of tile size.
             vae_tile_size: Tile size for vae tiling ([X]x[Y] format).
             vae_relative_tile_size: Relative tile size for vae tiling, in fraction of image size if < 1, in number of tiles per dim if >=1 ([X]x[Y] format) (overrides `vae_tile_size`).
-            easycache: Enable EasyCache for DiT models.
-            easycache_options: EasyCache options for DiT models with format "threshold,start_percent,end_percent".
+            cache_mode: The caching method to use (default: disabled).
+            scm_mask: SCM steps mask for cache-dit: comma-separated 0/1 (e.g., "1,1,1,0,0,1,0,0,1,0") - 1=compute, 0=can cache.
+            scm_policy: SCM policy 'dynamic' or 'static'.
             canny: Apply canny edge detection preprocessor to the `control_image`.
             upscale_factor: Run the ESRGAN upscaler this many times.
             preview_method: The preview method to use (default: none).
@@ -537,14 +570,38 @@ class StableDiffusion:
         _custom_sigmas = ctypes.cast(SigmasArrayType(*_custom_sigmas), ctypes.POINTER(ctypes.c_float))
 
         # -------------------------------------------
+        # Cache
+        # -------------------------------------------
+
+        cache_mode = self._validate_and_set_input(cache_mode, SD_CACHE_MODE_MAP, "cache_mode")
+        scm_policy = self._validate_and_set_input(scm_policy, {"dynamic": True, "static": False}, "scm_policy")
+
+        # If default reuse threshold and mode is easycache, set to 0.2
+        cache_reuse_threshold = (
+            0.2 if cache_mode == SDCacheMode.SD_CACHE_EASYCACHE and cache_reuse_threshold == 1.0 else cache_reuse_threshold
+        )
+
+        # -------------------------------------------
         # Parameters
         # -------------------------------------------
 
-        _easycache_params = sd_cpp.sd_easycache_params_t(
-            **self._parse_easycache(
-                enabled=easycache,
-                option_value=easycache_options,
-            )
+        _cache_params = sd_cpp.sd_cache_params_t(
+            mode=cache_mode,
+            reuse_threshold=cache_reuse_threshold,
+            start_percent=cache_start_percent,
+            end_percent=cache_end_percent,
+            error_decay_rate=cache_error_decay_rate,
+            use_relative_threshold=cache_use_relative_threshold,
+            reset_error_on_compute=cache_reset_error_on_compute,
+            Fn_compute_blocks=cache_Fn_compute_blocks,
+            Bn_compute_blocks=cache_Bn_compute_blocks,
+            residual_diff_threshold=cache_residual_diff_threshold,
+            max_warmup_steps=cache_max_warmup_steps,
+            max_continuous_cached_steps=cache_max_continuous_cached_steps,
+            taylorseer_n_derivatives=cache_taylorseer_n_derivatives,
+            taylorseer_skip_interval=cache_taylorseer_skip_interval,
+            scm_mask=scm_mask.encode("utf-8"),
+            scm_policy_dynamic=scm_policy,
         )
 
         _pm_params = sd_cpp.sd_pm_params_t(
@@ -609,7 +666,7 @@ class StableDiffusion:
             control_strength=control_strength,
             pm_params=_pm_params,
             vae_tiling_params=_vae_tiling_params,
-            easycache=_easycache_params,
+            cache=_cache_params,
         )
 
         # Log system info
@@ -703,8 +760,28 @@ class StableDiffusion:
         seed: int = 42,
         video_frames: int = 1,
         vace_strength: int = 1,
-        easycache: bool = False,
-        easycache_options: str = "0.2,0.15,0.95",
+        vae_tiling: bool = False,
+        vae_tile_overlap: float = 0.5,
+        vae_tile_size: Optional[Union[int, str]] = "0x0",
+        vae_relative_tile_size: Optional[Union[float, str]] = "0x0",
+        # ---
+        cache_mode: Union[str, SDCacheMode, int, float, None] = "disabled",
+        cache_reuse_threshold: float = 1.0,
+        cache_start_percent: float = 0.15,
+        cache_end_percent: float = 0.95,
+        cache_error_decay_rate: float = 1.0,
+        cache_use_relative_threshold: bool = True,
+        cache_reset_error_on_compute: bool = True,
+        cache_Fn_compute_blocks: int = 8,
+        cache_Bn_compute_blocks: int = 0,
+        cache_residual_diff_threshold: float = 0.08,
+        cache_max_warmup_steps: int = 8,
+        cache_max_continuous_cached_steps: int = -1,
+        cache_taylorseer_n_derivatives: int = 1,
+        cache_taylorseer_skip_interval: int = 1,
+        scm_mask: str = "",
+        scm_policy: Literal["dynamic", "static"] = "dynamic",
+        # ---
         upscale_factor: int = 1,
         preview_method: Union[str, Preview, int, float] = "none",
         preview_noisy: bool = False,
@@ -752,7 +829,13 @@ class StableDiffusion:
             seed: RNG seed (uses random seed for < 0).
             video_frames: Number of video frames to generate.
             vace_strength: Wan VACE strength.
-            easycache: Enable EasyCache for DiT models with optional "threshold,start_percent,end_percent".
+            vae_tiling: Process vae in tiles to reduce memory usage.
+            vae_tile_overlap: Tile overlap for vae tiling, in fraction of tile size.
+            vae_tile_size: Tile size for vae tiling ([X]x[Y] format).
+            vae_relative_tile_size: Relative tile size for vae tiling, in fraction of image size if < 1, in number of tiles per dim if >=1 ([X]x[Y] format) (overrides `vae_tile_size`).
+            cache_mode: The caching method to use (default: disabled).
+            scm_mask: SCM steps mask for cache-dit: comma-separated 0/1 (e.g., "1,1,1,0,0,1,0,0,1,0") - 1=compute, 0=can cache.
+            scm_policy: SCM policy 'dynamic' or 'static'.
             upscale_factor: Run the ESRGAN upscaler this many times.
             preview_method: The preview method to use (default: none).
             preview_noisy: Enables previewing noisy inputs of the models rather than the denoised outputs.
@@ -871,6 +954,13 @@ class StableDiffusion:
         )
 
         # -------------------------------------------
+        # Vae Tiling
+        # -------------------------------------------
+
+        tile_size_x, tile_size_y = self._parse_tile_size(vae_tile_size, as_float=False)
+        rel_size_x, rel_size_y = self._parse_tile_size(vae_relative_tile_size, as_float=True)
+
+        # -------------------------------------------
         # Scheduler/Sample Method
         # -------------------------------------------
 
@@ -912,6 +1002,18 @@ class StableDiffusion:
         _custom_sigmas = ctypes.cast(SigmasArrayType(*_custom_sigmas), ctypes.POINTER(ctypes.c_float))
 
         # -------------------------------------------
+        # Cache
+        # -------------------------------------------
+
+        cache_mode = self._validate_and_set_input(cache_mode, SD_CACHE_MODE_MAP, "cache_mode")
+        scm_policy = self._validate_and_set_input(scm_policy, {"dynamic": True, "static": False}, "scm_policy")
+
+        # If default reuse threshold and mode is easycache, set to 0.2
+        cache_reuse_threshold = (
+            0.2 if cache_mode == SDCacheMode.SD_CACHE_EASYCACHE and cache_reuse_threshold == 1.0 else cache_reuse_threshold
+        )
+
+        # -------------------------------------------
         #  High Noise Parameters
         # -------------------------------------------
 
@@ -943,11 +1045,32 @@ class StableDiffusion:
         # Parameters
         # -------------------------------------------
 
-        _easycache_params = sd_cpp.sd_easycache_params_t(
-            **self._parse_easycache(
-                enabled=easycache,
-                option_value=easycache_options,
-            )
+        _cache_params = sd_cpp.sd_cache_params_t(
+            mode=cache_mode,
+            reuse_threshold=cache_reuse_threshold,
+            start_percent=cache_start_percent,
+            end_percent=cache_end_percent,
+            error_decay_rate=cache_error_decay_rate,
+            use_relative_threshold=cache_use_relative_threshold,
+            reset_error_on_compute=cache_reset_error_on_compute,
+            Fn_compute_blocks=cache_Fn_compute_blocks,
+            Bn_compute_blocks=cache_Bn_compute_blocks,
+            residual_diff_threshold=cache_residual_diff_threshold,
+            max_warmup_steps=cache_max_warmup_steps,
+            max_continuous_cached_steps=cache_max_continuous_cached_steps,
+            taylorseer_n_derivatives=cache_taylorseer_n_derivatives,
+            taylorseer_skip_interval=cache_taylorseer_skip_interval,
+            scm_mask=scm_mask.encode("utf-8"),
+            scm_policy_dynamic=scm_policy,
+        )
+
+        _vae_tiling_params = sd_cpp.sd_tiling_params_t(
+            enabled=vae_tiling,
+            tile_size_x=tile_size_x,
+            tile_size_y=tile_size_y,
+            target_overlap=vae_tile_overlap,
+            rel_size_x=rel_size_x,
+            rel_size_y=rel_size_y,
         )
 
         _guidance_params = sd_cpp.sd_guidance_params_t(
@@ -993,7 +1116,8 @@ class StableDiffusion:
             seed=seed,
             video_frames=video_frames,
             vace_strength=vace_strength,
-            easycache=_easycache_params,
+            vae_tiling_params=_vae_tiling_params,
+            cache=_cache_params,
         )
 
         # Log system info
@@ -1177,6 +1301,7 @@ class StableDiffusion:
         output_path: str = "output.gguf",
         output_type: Union[str, GGMLType, int, float] = "default",
         tensor_type_rules: str = "",
+        convert_name: bool = True,
     ) -> bool:
         """Convert a model to gguf format.
 
@@ -1186,6 +1311,7 @@ class StableDiffusion:
             output_path: Path to save the converted model.
             output_type: The weight type (default: auto).
             tensor_type_rules: Weight type per tensor pattern (example: "^vae\\\\.=f16,model\\\\.=q8_0")
+            convert_name: Convert tensor name.
 
         Returns:
             A boolean indicating success."""
@@ -1210,6 +1336,7 @@ class StableDiffusion:
                 self._clean_path(output_path).encode("utf-8"),
                 output_type,
                 tensor_type_rules.encode("utf-8"),
+                convert_name,
             )
 
         return model_converted
@@ -1333,33 +1460,6 @@ class StableDiffusion:
             raise ValueError(f"Could not parse any sigma values from '{sigmas}'")
 
         return custom_sigmas
-
-    # -------------------------------------------
-    # Parse EasyCache
-    # -------------------------------------------
-
-    def _parse_easycache(self, enabled: bool, option_value: str) -> dict:
-        parts = [p.strip() for p in str(option_value).split(",")]
-        if len(parts) != 3:
-            raise ValueError("easycache expects exactly 3 comma-separated values (threshold,start,end)")
-
-        try:
-            threshold, start, end = map(float, parts)
-        except ValueError:
-            raise ValueError(f"invalid easycache value '{option_value}'")
-
-        if threshold < 0.0:
-            raise ValueError("easycache threshold must be non-negative")
-
-        if not (0.0 <= start < end <= 1.0):
-            raise ValueError("easycache start/end must satisfy 0.0 <= start < end <= 1.0")
-
-        return {
-            "enabled": enabled,
-            "reuse_threshold": threshold,
-            "start_percent": start,
-            "end_percent": end,
-        }
 
     # -------------------------------------------
     # Parse Tile Size
@@ -1791,6 +1891,7 @@ SCHEDULER_MAP = {
     "sgm_uniform": Scheduler.SGM_UNIFORM_SCHEDULER,
     "simple": Scheduler.SIMPLE_SCHEDULER,
     "smoothstep": Scheduler.SMOOTHSTEP_SCHEDULER,
+    "kl_optimal": Scheduler.KL_OPTIMAL_SCHEDULER,
     "lcm": Scheduler.LCM_SCHEDULER,
     "scheduler_count": Scheduler.SCHEDULER_COUNT,
 }
@@ -1861,4 +1962,13 @@ LORA_APPLY_MODE_MAP = {
     "immediately": LoraApplyMode.LORA_APPLY_IMMEDIATELY,
     "at_runtime": LoraApplyMode.LORA_APPLY_AT_RUNTIME,
     "lora_apply_mode_count": LoraApplyMode.LORA_APPLY_MODE_COUNT,
+}
+
+SD_CACHE_MODE_MAP = {
+    "disabled": SDCacheMode.SD_CACHE_DISABLED,  # Default
+    "easycache": SDCacheMode.SD_CACHE_EASYCACHE,
+    "ucache": SDCacheMode.SD_CACHE_UCACHE,
+    "dbcache": SDCacheMode.SD_CACHE_DBCACHE,
+    "taylorseer": SDCacheMode.SD_CACHE_TAYLORSEER,
+    "cachedit": SDCacheMode.SD_CACHE_CACHE_DIT,
 }

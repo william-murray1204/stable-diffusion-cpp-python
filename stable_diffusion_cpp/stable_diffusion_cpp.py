@@ -202,6 +202,7 @@ class SampleMethod(IntEnum):
 #     SGM_UNIFORM_SCHEDULER,
 #     SIMPLE_SCHEDULER,
 #     SMOOTHSTEP_SCHEDULER,
+#     KL_OPTIMAL_SCHEDULER,
 #     LCM_SCHEDULER,
 #     SCHEDULER_COUNT
 # };
@@ -214,8 +215,9 @@ class Scheduler(IntEnum):
     SGM_UNIFORM_SCHEDULER = 5
     SIMPLE_SCHEDULER = 6
     SMOOTHSTEP_SCHEDULER = 7
-    LCM_SCHEDULER = 8
-    SCHEDULER_COUNT = 9
+    KL_OPTIMAL_SCHEDULER = 8
+    LCM_SCHEDULER = 9
+    SCHEDULER_COUNT = 10
 
 
 # enum prediction_t {
@@ -354,6 +356,23 @@ class LoraApplyMode(IntEnum):
     LORA_APPLY_MODE_COUNT = 3
 
 
+# enum sd_cache_mode_t {
+#     SD_CACHE_DISABLED = 0,
+#     SD_CACHE_EASYCACHE,
+#     SD_CACHE_UCACHE,
+#     SD_CACHE_DBCACHE,
+#     SD_CACHE_TAYLORSEER,
+#     SD_CACHE_CACHE_DIT,
+# };
+class SDCacheMode(IntEnum):
+    SD_CACHE_DISABLED = 0
+    SD_CACHE_EASYCACHE = 1
+    SD_CACHE_UCACHE = 2
+    SD_CACHE_DBCACHE = 3
+    SD_CACHE_TAYLORSEER = 4
+    SD_CACHE_CACHE_DIT = 5
+
+
 # ===========================================
 # Inference
 # ===========================================
@@ -377,7 +396,7 @@ class sd_embedding_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const char* lora_model_dir; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool enable_mmap; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool circular_x; bool circular_y; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; bool qwen_image_zero_cond_t; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -392,7 +411,6 @@ class sd_ctx_params_t(ctypes.Structure):
         ("vae_path", ctypes.c_char_p),
         ("taesd_path", ctypes.c_char_p),
         ("control_net_path", ctypes.c_char_p),
-        ("lora_model_dir", ctypes.c_char_p),
         ("embeddings", ctypes.POINTER(sd_embedding_t)),
         ("embedding_count", ctypes.c_uint32),
         ("photo_maker_path", ctypes.c_char_p),
@@ -406,6 +424,7 @@ class sd_ctx_params_t(ctypes.Structure):
         ("prediction", ctypes.c_int),  # Prediction
         ("lora_apply_mode", ctypes.c_int),  # LoraApplyMode
         ("offload_params_to_cpu", ctypes.c_bool),
+        ("enable_mmap", ctypes.c_bool),
         ("keep_clip_on_cpu", ctypes.c_bool),
         ("keep_control_net_on_cpu", ctypes.c_bool),
         ("keep_vae_on_cpu", ctypes.c_bool),
@@ -413,10 +432,13 @@ class sd_ctx_params_t(ctypes.Structure):
         ("tae_preview_only", ctypes.c_bool),
         ("diffusion_conv_direct", ctypes.c_bool),
         ("vae_conv_direct", ctypes.c_bool),
+        ("circular_x", ctypes.c_bool),
+        ("circular_y", ctypes.c_bool),
         ("force_sdxl_vae_conv_scale", ctypes.c_bool),
         ("chroma_use_dit_mask", ctypes.c_bool),
         ("chroma_use_t5_mask", ctypes.c_bool),
         ("chroma_t5_mask_pad", ctypes.c_int),
+        ("qwen_image_zero_cond_t", ctypes.c_bool),
         ("flow_shift", ctypes.c_float),
     ]
 
@@ -572,17 +594,30 @@ class sd_sample_params_t(ctypes.Structure):
 
 
 # -------------------------------------------
-# sd_easycache_params_t
+# sd_cache_params_t
 # -------------------------------------------
 
 
-# typedef struct { bool enabled; float reuse_threshold; float start_percent; float end_percent; } sd_easycache_params_t;
-class sd_easycache_params_t(ctypes.Structure):
+# typedef struct { enum sd_cache_mode_t mode; float reuse_threshold; float start_percent; float end_percent; float error_decay_rate; bool use_relative_threshold; bool reset_error_on_compute; int Fn_compute_blocks; int Bn_compute_blocks; float residual_diff_threshold; int max_warmup_steps; int max_cached_steps; int max_continuous_cached_steps; int taylorseer_n_derivatives; int taylorseer_skip_interval; const char* scm_mask; bool scm_policy_dynamic; } sd_cache_params_t;
+class sd_cache_params_t(ctypes.Structure):
     _fields_ = [
-        ("enabled", ctypes.c_bool),
+        ("mode", ctypes.c_int),  # SDCacheMode
         ("reuse_threshold", ctypes.c_float),
         ("start_percent", ctypes.c_float),
         ("end_percent", ctypes.c_float),
+        ("error_decay_rate", ctypes.c_float),
+        ("use_relative_threshold", ctypes.c_bool),
+        ("reset_error_on_compute", ctypes.c_bool),
+        ("Fn_compute_blocks", ctypes.c_int),
+        ("Bn_compute_blocks", ctypes.c_int),
+        ("residual_diff_threshold", ctypes.c_float),
+        ("max_warmup_steps", ctypes.c_int),
+        ("max_cached_steps", ctypes.c_int),
+        ("max_continuous_cached_steps", ctypes.c_int),
+        ("taylorseer_n_derivatives", ctypes.c_int),
+        ("taylorseer_skip_interval", ctypes.c_int),
+        ("scm_mask", ctypes.c_char_p),
+        ("scm_policy_dynamic", ctypes.c_bool),
     ]
 
 
@@ -605,7 +640,7 @@ class sd_lora_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { const sd_lora_t* loras; uint32_t lora_count; const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; sd_easycache_params_t easycache; } sd_img_gen_params_t;
+# typedef struct { const sd_lora_t* loras; uint32_t lora_count; const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t* ref_images; int ref_images_count; bool auto_resize_ref_image; bool increase_ref_index; sd_image_t mask_image; int width; int height; sd_sample_params_t sample_params; float strength; int64_t seed; int batch_count; sd_image_t control_image; float control_strength; sd_pm_params_t pm_params; sd_tiling_params_t vae_tiling_params; sd_cache_params_t cache; } sd_img_gen_params_t;
 class sd_img_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("loras", ctypes.POINTER(sd_lora_t)),
@@ -629,7 +664,7 @@ class sd_img_gen_params_t(ctypes.Structure):
         ("control_strength", ctypes.c_float),
         ("pm_params", sd_pm_params_t),
         ("vae_tiling_params", sd_tiling_params_t),
-        ("easycache", sd_easycache_params_t),
+        ("cache", sd_cache_params_t),
     ]
 
 
@@ -659,7 +694,7 @@ def generate_image(
 # -------------------------------------------
 
 
-# typedef struct { const sd_lora_t* loras; uint32_t lora_count; const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; sd_easycache_params_t easycache; } sd_vid_gen_params_t;
+# typedef struct { const sd_lora_t* loras; uint32_t lora_count; const char* prompt; const char* negative_prompt; int clip_skip; sd_image_t init_image; sd_image_t end_image; sd_image_t* control_frames; int control_frames_size; int width; int height; sd_sample_params_t sample_params; sd_sample_params_t high_noise_sample_params; float moe_boundary; float strength; int64_t seed; int video_frames; float vace_strength; sd_tiling_params_t vae_tiling_params; sd_cache_params_t cache; } sd_vid_gen_params_t;
 class sd_vid_gen_params_t(ctypes.Structure):
     _fields_ = [
         ("loras", ctypes.POINTER(sd_lora_t)),
@@ -680,7 +715,8 @@ class sd_vid_gen_params_t(ctypes.Structure):
         ("seed", ctypes.c_int64),
         ("video_frames", ctypes.c_int),
         ("vace_strength", ctypes.c_float),
-        ("easycache", sd_easycache_params_t),
+        ("vae_tiling_params", sd_tiling_params_t),
+        ("cache", sd_cache_params_t),
     ]
 
 
@@ -856,7 +892,7 @@ def get_upscale_factor(
 # -------------------------------------------
 
 
-# SD_API bool convert(const char* input_path, const char* vae_path, const char* output_path, enum sd_type_t output_type, const char* tensor_type_rules);
+# SD_API bool convert(const char* input_path, const char* vae_path, const char* output_path, enum sd_type_t output_type, const char* tensor_type_rules, bool convert_name);
 @ctypes_function(
     "convert",
     [
@@ -865,6 +901,7 @@ def get_upscale_factor(
         ctypes.c_char_p,  # output_path
         ctypes.c_int,  # output_type
         ctypes.c_char_p,  # tensor_type_rules
+        ctypes.c_bool,  # convert_name
     ],
     ctypes.c_bool,
 )
@@ -874,6 +911,7 @@ def convert(
     output_path: bytes,
     output_type: int,
     tensor_type_rules: bytes,
+    convert_name: bool,
     /,
 ) -> bool: ...
 
