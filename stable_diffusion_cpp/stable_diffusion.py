@@ -1813,6 +1813,8 @@ class StableDiffusion:
     # -------------------------------------------
 
     def _bytes_to_image(self, byte_data: bytes, width: int, height: int, channel: int = 3) -> Image.Image:
+        """Convert a byte array to a PIL Image."""
+
         pixel_length = width * height * channel
         data = byte_data[:pixel_length].ljust(pixel_length, b'\x00')
 
