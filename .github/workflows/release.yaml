@@ -7,15 +7,10 @@ on:
             - main
 
 jobs:
-    update-major-version:
-        runs-on: ubuntu-latest
-
     # ===========================================
     # Update Develop Branch
     # ===========================================
     update-develop-branch:
-        needs:
-            - update-major-version
         runs-on: ubuntu-latest
         steps:
             # -------------------------------------------
