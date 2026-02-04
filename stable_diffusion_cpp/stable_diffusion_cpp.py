@@ -175,6 +175,8 @@ class RNGType(IntEnum):
 #     LCM_SAMPLE_METHOD,
 #     DDIM_TRAILING_SAMPLE_METHOD,
 #     TCD_SAMPLE_METHOD,
+#     RES_MULTISTEP_SAMPLE_METHOD,
+#     RES_2S_SAMPLE_METHOD,
 #     SAMPLE_METHOD_COUNT
 # };
 class SampleMethod(IntEnum):
@@ -190,7 +192,9 @@ class SampleMethod(IntEnum):
     LCM_SAMPLE_METHOD = 9
     DDIM_TRAILING_SAMPLE_METHOD = 10
     TCD_SAMPLE_METHOD = 11
-    SAMPLE_METHOD_COUNT = 12
+    RES_MULTISTEP_SAMPLE_METHOD = 12
+    RES_2S_SAMPLE_METHOD = 13
+    SAMPLE_METHOD_COUNT = 14
 
 
 # enum scheduler_t {
@@ -204,6 +208,7 @@ class SampleMethod(IntEnum):
 #     SMOOTHSTEP_SCHEDULER,
 #     KL_OPTIMAL_SCHEDULER,
 #     LCM_SCHEDULER,
+#     BONG_TANGENT_SCHEDULER,
 #     SCHEDULER_COUNT
 # };
 class Scheduler(IntEnum):
@@ -217,7 +222,8 @@ class Scheduler(IntEnum):
     SMOOTHSTEP_SCHEDULER = 7
     KL_OPTIMAL_SCHEDULER = 8
     LCM_SCHEDULER = 9
-    SCHEDULER_COUNT = 10
+    BONG_TANGENT_SCHEDULER = 10
+    SCHEDULER_COUNT = 11
 
 
 # enum prediction_t {
@@ -396,7 +402,7 @@ class sd_embedding_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool enable_mmap; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool circular_x; bool circular_y; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; bool qwen_image_zero_cond_t; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool enable_mmap; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool flash_attn; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool circular_x; bool circular_y; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; bool qwen_image_zero_cond_t; float flow_shift; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -428,6 +434,7 @@ class sd_ctx_params_t(ctypes.Structure):
         ("keep_clip_on_cpu", ctypes.c_bool),
         ("keep_control_net_on_cpu", ctypes.c_bool),
         ("keep_vae_on_cpu", ctypes.c_bool),
+        ("flash_attn", ctypes.c_bool),
         ("diffusion_flash_attn", ctypes.c_bool),
         ("tae_preview_only", ctypes.c_bool),
         ("diffusion_conv_direct", ctypes.c_bool),

@@ -397,7 +397,7 @@ Download the weights from the links below:
 
 - Preconverted gguf model from [FLUX.1-Kontext-dev-GGUF](https://huggingface.co/QuantStack/FLUX.1-Kontext-dev-GGUF)
 - Otherwise, download FLUX.1-Kontext-dev from [black-forest-labs/FLUX.1-Kontext-dev](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev/blob/main/flux1-kontext-dev.safetensors)
-- The `vae`, `clip_l`, and `t5xxl` models are the same as for FLUX image generation linked above.
+- The `vae`, `clip_l`, and `t5xxl` models are the same as for FLUX.1 image generation linked above.
 
 ```python
 from stable_diffusion_cpp import StableDiffusion
@@ -423,7 +423,8 @@ Download the weights from the links below:
 
 - Preconverted gguf model from [silveroxides/Chroma1-Flash-GGUF](https://huggingface.co/silveroxides/Chroma1-Flash-GGUF), [silveroxides/Chroma1-Base-GGUF](https://huggingface.co/silveroxides/Chroma1-Base-GGUF) or [silveroxides/Chroma1-HD-GGUF](https://huggingface.co/silveroxides/Chroma1-HD-GGUF) ([silveroxides/Chroma-GGUF](https://huggingface.co/silveroxides/Chroma-GGUF) is DEPRECATED)
 - Otherwise, download chroma's safetensors from [lodestones/Chroma1-Flash](https://huggingface.co/lodestones/Chroma1-Flash), [lodestones/Chroma1-Base](https://huggingface.co/lodestones/Chroma1-Base) or [lodestones/Chroma1-HD](https://huggingface.co/lodestones/Chroma1-HD) ([lodestones/Chroma](https://huggingface.co/lodestones/Chroma) is DEPRECATED)
-- The `vae` and `t5xxl` models are the same as for FLUX image generation linked above (`clip_l` not required).
+
+- The `vae` and `t5xxl` models are the same as for FLUX.1 image generation linked above (`clip_l` not required).
 
 or Chroma Radiance models from:
 
@@ -445,6 +446,53 @@ stable_diffusion = StableDiffusion(
 output = stable_diffusion.generate_image(
       prompt="a lovely cat holding a sign says 'chroma.cpp'",
       cfg_scale=4.0, # a cfg_scale of 4 is recommended for Chroma
+)
+```
+
+#### <u>Klein (FLUX)</u>
+
+Download the weights from the links below:
+
+- Download `FLUX.2-klein-4B`
+  - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
+  - gguf: https://huggingface.co/leejet/FLUX.2-klein-4B-GGUF/tree/main
+- Download `FLUX.2-klein-base-4B`
+  - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B
+  - gguf: https://huggingface.co/leejet/FLUX.2-klein-base-4B-GGUF/tree/main
+- Download `Qwen3 4b`
+  - safetensors: https://huggingface.co/Comfy-Org/flux2-klein-4B/tree/main/split_files/text_encoders
+  - gguf: https://huggingface.co/unsloth/Qwen3-4B-GGUF/tree/main
+
+Or the 9B versions from:
+
+- Download `FLUX.2-klein-9B`
+  - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-9B
+  - gguf: https://huggingface.co/leejet/FLUX.2-klein-9B-GGUF/tree/main
+- Download `FLUX.2-klein-base-9B`
+  - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-base-9B
+  - gguf: https://huggingface.co/leejet/FLUX.2-klein-base-9B-GGUF/tree/main
+- Download `Qwen3 8B`
+  - safetensors: https://huggingface.co/Comfy-Org/flux2-klein-9B/tree/main/split_files/text_encoders
+  - gguf: https://huggingface.co/unsloth/Qwen3-8B-GGUF/tree/main
+
+- The `vae` model is the same as FLUX.2 image generation linked above (`clip_l` and `t5xxl` not required).
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/flux-2-klein-4b.safetensors",
+      llm_path="../models/Qwen3-4B-Q8_0.safetensors",
+      vae_path="../models/ae.safetensors",
+      offload_params_to_cpu=True,
+      diffusion_flash_attn=True,
+)
+
+output = stable_diffusion.generate_image(
+      prompt="the cat has a hat",
+      ref_images=["input.png"],
+      sample_steps=4,
+      cfg_scale=1.0,
 )
 ```
 
@@ -659,6 +707,9 @@ Download the weights from the links below:
 - Download `Z-Image-Turbo`
   - safetensors: https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/diffusion_models
   - gguf: https://huggingface.co/leejet/Z-Image-Turbo-GGUF/tree/main
+- Download `Z-Image`
+  - safetensors: https://huggingface.co/Comfy-Org/z_image/tree/main/split_files/diffusion_models
+  - gguf: https://huggingface.co/unsloth/Z-Image-GGUF/tree/main
 - Download `vae`
   - safetensors: https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main
 - Download `Qwen3 4b`
@@ -846,7 +897,7 @@ print("SD cache modes:", list(SD_CACHE_MODE_MAP))
 
 ### <u>Other High-level API Examples</u>
 
-Other examples for the high-level API (such as upscaling and model conversion) can be found in the [tests](tests) directory.
+Other examples for the high-level API (such as upscaling and multi-GPU usage) can be found in the [tests](tests) directory.
 
 ## Low-level API
 

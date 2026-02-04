@@ -1,0 +1,48 @@
+name: Release
+
+on:
+    workflow_dispatch: # Allow manual triggering from the Actions tab
+    push:
+        branches:
+            - main
+
+jobs:
+    update-major-version:
+        runs-on: ubuntu-latest
+
+    # ===========================================
+    # Update Develop Branch
+    # ===========================================
+    update-develop-branch:
+        needs:
+            - update-major-version
+        runs-on: ubuntu-latest
+        steps:
+            # -------------------------------------------
+            # Checkout Main
+            # -------------------------------------------
+            - name: Checkout Main
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # fetch all history
+                  ref: main
+
+            # -------------------------------------------
+            # Checkout Develop
+            # -------------------------------------------
+            - name: Checkout Develop
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # fetch all history
+                  ref: dev
+
+            - name: Fetch Main Branch
+              run: git fetch origin main
+
+            - name: Merge Main into Develop
+              run: |
+                  # Configure github actions bot
+                  git config --global user.name "github-actions"
+
+                  git merge origin/main --no-edit
+                  git push

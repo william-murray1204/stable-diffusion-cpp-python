@@ -61,6 +61,7 @@ class StableDiffusion:
         keep_clip_on_cpu: bool = False,
         keep_control_net_on_cpu: bool = False,
         keep_vae_on_cpu: bool = False,
+        flash_attn: bool = False,
         diffusion_flash_attn: bool = False,
         tae_preview_only: bool = False,
         diffusion_conv_direct: bool = False,
@@ -119,10 +120,11 @@ class StableDiffusion:
             keep_clip_on_cpu: Keep clip in CPU (for low vram).
             keep_control_net_on_cpu: Keep Control Net in CPU (for low vram).
             keep_vae_on_cpu: Keep vae in CPU (for low vram).
-            diffusion_flash_attn: Use flash attention in diffusion model (can reduce memory usage significantly). May lower quality or crash if backend not supported.
+            flash_attn: Use flash attention (can reduce memory usage significantly).
+            diffusion_flash_attn: Use flash attention in the diffusion model only.
             tae_preview_only: Prevents usage of taesd for decoding the final image (for use with preview="tae").
-            diffusion_conv_direct: Use Conv2d direct in the diffusion model. May crash if backend not supported.
-            vae_conv_direct: Use Conv2d direct in the vae model (should improve performance). May crash if backend not supported.
+            diffusion_conv_direct: Use Conv2d direct in the diffusion model.
+            vae_conv_direct: Use Conv2d direct in the vae model (should improve performance).
             circular_x: Enable circular RoPE wrapping on x-axis (width) only.
             circular_y: Enable circular RoPE wrapping on y-axis (height) only.
             force_sdxl_vae_conv_scale: Force use of conv scale on SDXL vae.
@@ -173,6 +175,7 @@ class StableDiffusion:
         self.keep_clip_on_cpu = keep_clip_on_cpu
         self.keep_control_net_on_cpu = keep_control_net_on_cpu
         self.keep_vae_on_cpu = keep_vae_on_cpu
+        self.flash_attn = flash_attn
         self.diffusion_flash_attn = diffusion_flash_attn
         self.tae_preview_only = tae_preview_only
         self.diffusion_conv_direct = diffusion_conv_direct
@@ -269,6 +272,7 @@ class StableDiffusion:
                     keep_clip_on_cpu=self.keep_clip_on_cpu,
                     keep_control_net_on_cpu=self.keep_control_net_on_cpu,
                     keep_vae_on_cpu=self.keep_vae_on_cpu,
+                    flash_attn=self.flash_attn,
                     diffusion_flash_attn=self.diffusion_flash_attn,
                     tae_preview_only=self.tae_preview_only,
                     diffusion_conv_direct=self.diffusion_conv_direct,
@@ -1600,6 +1604,7 @@ class StableDiffusion:
         self, user_input: Union[str, int, float, None], type_map: Dict, attribute_name: str, allow_none: bool = False
     ) -> Optional[int]:
         """Validate an input strinbg or int from a map of strings to integers."""
+
         if user_input is None and allow_none == True:
             return None
 
@@ -1679,6 +1684,7 @@ class StableDiffusion:
         channel: int = 3,
     ) -> Image.Image:
         """Convert an image path or Pillow Image to a Pillow Image of RGBA or grayscale (inpainting masks) format."""
+
         # Convert image path to image if str
         if isinstance(image, str):
             image = Image.open(self._clean_path(image))
@@ -1703,6 +1709,7 @@ class StableDiffusion:
 
     def _cast_image(self, image: Union[Image.Image, str], channel: int = 3):
         """Cast a PIL Image to a C uint8 pointer."""
+
         image, width, height = self._format_image(image, channel)
 
         # Convert the PIL Image to a byte array
@@ -1721,6 +1728,7 @@ class StableDiffusion:
         self, image: Union[ctypes.c_uint8, None], width: int, height: int, channel: int = 3
     ) -> sd_cpp.sd_image_t:
         """Convert a C uint8 pointer to a C sd_image_t."""
+
         c_image = sd_cpp.sd_image_t(
             width=width,
             height=height,
@@ -1735,6 +1743,7 @@ class StableDiffusion:
 
     def _image_to_sd_image_t_p(self, image: Union[Image.Image, str], channel: int = 3) -> sd_cpp.sd_image_t:
         """Convert a PIL Image or image path to a C sd_image_t."""
+
         data, width, height = self._cast_image(image, channel)
         c_image = self._c_uint8_to_sd_image_t_p(data, width, height, channel)
         return c_image
@@ -1770,6 +1779,7 @@ class StableDiffusion:
 
     def _image_slice(self, c_images: sd_cpp.sd_image_t, count: int, upscale_factor: int) -> List[Dict]:
         """Slice a C array of images."""
+
         image_array = ctypes.cast(c_images, ctypes.POINTER(sd_cpp.sd_image_t * count)).contents
 
         images = []
@@ -1816,17 +1826,17 @@ class StableDiffusion:
         """Convert a byte array to a PIL Image."""
 
         pixel_length = width * height * channel
-        data = byte_data[:pixel_length].ljust(pixel_length, b'\x00')
+        data = byte_data[:pixel_length].ljust(pixel_length, b"\x00")
 
         if channel == 3:
             return Image.frombytes("RGB", (width, height), data).convert("RGBA")
-        
+
         if channel == 4:
             return Image.frombytes("RGBA", (width, height), data)
-        
+
         if channel == 1:
             return Image.frombytes("L", (width, height), data).convert("RGBA")
-        
+
         raise ValueError(f"Unsupported channel value: '{channel}'")
 
     # -------------------------------------------
@@ -1872,6 +1882,8 @@ SAMPLE_METHOD_MAP = {
     "lcm": SampleMethod.LCM_SAMPLE_METHOD,
     "ddim_trailing": SampleMethod.DDIM_TRAILING_SAMPLE_METHOD,
     "tcd": SampleMethod.TCD_SAMPLE_METHOD,
+    "res_multistep": SampleMethod.RES_MULTISTEP_SAMPLE_METHOD,
+    "res_2s": SampleMethod.RES_2S_SAMPLE_METHOD,
     "sample_method_count": SampleMethod.SAMPLE_METHOD_COUNT,
 }
 
@@ -1887,6 +1899,7 @@ SCHEDULER_MAP = {
     "smoothstep": Scheduler.SMOOTHSTEP_SCHEDULER,
     "kl_optimal": Scheduler.KL_OPTIMAL_SCHEDULER,
     "lcm": Scheduler.LCM_SCHEDULER,
+    "bong_tangent": Scheduler.BONG_TANGENT_SCHEDULER,
     "scheduler_count": Scheduler.SCHEDULER_COUNT,
 }
 
