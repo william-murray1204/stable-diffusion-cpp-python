@@ -1814,26 +1814,20 @@ class StableDiffusion:
 
     def _bytes_to_image(self, byte_data: bytes, width: int, height: int, channel: int = 3) -> Image.Image:
         """Convert a byte array to a PIL Image."""
-        # Initialize the image with RGBA mode
-        image = Image.new("RGBA", (width, height))
 
-        for y in range(height):
-            for x in range(width):
-                idx = (y * width + x) * channel
-                # Dynamically create the color tuple
-                color = tuple(byte_data[idx + i] if idx + i < len(byte_data) else 0 for i in range(channel))
-                if channel == 1:  # Grayscale
-                    color = (color[0],) * 3 + (255,)  # Convert to (R, G, B, A)
-                elif channel == 3:  # RGB
-                    color = color + (255,)  # Add alpha channel
-                elif channel == 4:  # RGBA
-                    pass  # Use color as is
-                else:
-                    raise ValueError(f"Unsupported channel value: '{channel}'")
-                # Set the pixel
-                image.putpixel((x, y), color)
+        pixel_length = width * height * channel
+        data = byte_data[:pixel_length].ljust(pixel_length, b'\x00')
 
-        return image
+        if channel == 3:
+            return Image.frombytes("RGB", (width, height), data).convert("RGBA")
+        
+        if channel == 4:
+            return Image.frombytes("RGBA", (width, height), data)
+        
+        if channel == 1:
+            return Image.frombytes("L", (width, height), data).convert("RGBA")
+        
+        raise ValueError(f"Unsupported channel value: '{channel}'")
 
     # -------------------------------------------
     # Clean Path
