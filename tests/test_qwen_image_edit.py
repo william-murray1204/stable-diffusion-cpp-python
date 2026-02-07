@@ -3,9 +3,9 @@ from conftest import OUTPUT_DIR
 
 from stable_diffusion_cpp import StableDiffusion
 
-DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\qwen\\Qwen_Image_Edit-Q4_0.gguf"
+DIFFUSION_MODEL_PATH = "F:\\stable-diffusion\\qwen\\Qwen_Image_Edit-Q2_K.gguf"
 VAE_PATH = "F:\\stable-diffusion\\qwen\\qwen_image_vae.safetensors"
-LLM_PATH = "F:\\stable-diffusion\\qwen\\Qwen2.5-VL-7B-Instruct.Q8_0.gguf"
+LLM_PATH = "F:\\stable-diffusion\\qwen\\Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf"
 
 
 PROMPT = "put a party hat on the cat"
