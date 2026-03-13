@@ -456,7 +456,7 @@ Download the weights from the links below:
 - Download `FLUX.2-klein-4B`
   - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
   - gguf: https://huggingface.co/leejet/FLUX.2-klein-4B-GGUF/tree/main
-- Download `FLUX.2-klein-base-4B`
+- Or the base model `FLUX.2-klein-base-4B`
   - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B
   - gguf: https://huggingface.co/leejet/FLUX.2-klein-base-4B-GGUF/tree/main
 - Download `Qwen3 4b`
@@ -468,7 +468,7 @@ Or the 9B versions from:
 - Download `FLUX.2-klein-9B`
   - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-9B
   - gguf: https://huggingface.co/leejet/FLUX.2-klein-9B-GGUF/tree/main
-- Download `FLUX.2-klein-base-9B`
+- Or the base model `FLUX.2-klein-base-9B`
   - safetensors: https://huggingface.co/black-forest-labs/FLUX.2-klein-base-9B
   - gguf: https://huggingface.co/leejet/FLUX.2-klein-base-9B-GGUF/tree/main
 - Download `Qwen3 8B`
@@ -707,7 +707,7 @@ Download the weights from the links below:
 - Download `Z-Image-Turbo`
   - safetensors: https://huggingface.co/Comfy-Org/z_image_turbo/tree/main/split_files/diffusion_models
   - gguf: https://huggingface.co/leejet/Z-Image-Turbo-GGUF/tree/main
-- Download `Z-Image`
+- Or the base model `Z-Image`
   - safetensors: https://huggingface.co/Comfy-Org/z_image/tree/main/split_files/diffusion_models
   - gguf: https://huggingface.co/unsloth/Z-Image-GGUF/tree/main
 - Download `vae`
@@ -731,7 +731,7 @@ output = stable_diffusion.generate_image(
       prompt="A cinematic, melancholic photograph of a solitary hooded figure walking through a sprawling, rain-slicked metropolis at night. The city lights are a chaotic blur of neon orange and cool blue, reflecting on the wet asphalt. The scene evokes a sense of being a single component in a vast machine. Superimposed over the image in a sleek, modern, slightly glitched font is the philosophical quote: 'THE CITY IS A CIRCUIT BOARD, AND I AM A BROKEN TRANSISTOR.' -- moody, atmospheric, profound, dark academic",
       height=1024,
       width=512,
-      cfg_scale=1.0,
+      cfg_scale=1.0, # a cfg_scale of 5 is recommended for Z-Image base (non-turbo)
 )
 ```
 
