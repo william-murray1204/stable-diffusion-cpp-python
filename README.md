@@ -700,6 +700,39 @@ output = stable_diffusion.generate_image(
 
 ---
 
+### <u>Anima</u>
+
+Download the weights from the links below:
+
+- Download `Anima`
+  - safetensors: https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/diffusion_models
+  - gguf: https://huggingface.co/Bedovyy/Anima-GGUF/tree/main
+  - gguf Anima2: https://huggingface.co/JusteLeo/Anima2-GGUF/tree/main
+- Download `vae`
+  - safetensors: https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/vae
+- Download `Qwen3-0.6B-Base`
+  - safetensors: https://huggingface.co/circlestone-labs/Anima/tree/main/split_files/text_encoders
+  - gguf: https://huggingface.co/mradermacher/Qwen3-0.6B-Base-GGUF/tree/main
+
+```python
+from stable_diffusion_cpp import StableDiffusion
+
+stable_diffusion = StableDiffusion(
+      diffusion_model_path="../models/anima-preview.safetensors",
+      llm_path="../models/qwen_3_06b_base.safetensors",
+      vae_path="../models/qwen_image_vae.safetensors",
+      offload_params_to_cpu=True,
+)
+
+output = stable_diffusion.generate_image(
+      prompt="a lovely cat holding a sign says 'anima.cpp'",
+      cfg_scale=6.0,
+      sample_method='euler',
+)
+```
+
+---
+
 ### <u>Z-Image</u>
 
 Download the weights from the links below:

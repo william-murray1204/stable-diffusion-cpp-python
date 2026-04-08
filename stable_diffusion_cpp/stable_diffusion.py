@@ -413,7 +413,7 @@ class StableDiffusion:
             scheduler: Denoiser sigma scheduler (default: discrete).
             sample_method: Sampling method (default: euler for Flux/SD3/Wan, euler_a otherwise).
             sample_steps: Number of sample steps.
-            eta: Eta in DDIM, only for DDIM and TCD.
+            eta: Noise multiplier (default: 0 for ddim_trailing, tcd, res_multistep and res_2s; 1 for euler_a and dpm++2s_a).
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
             sigmas: Custom sigma values for the sampler, comma-separated (e.g. "14.61,7.8,3.5,0.0").
             flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
@@ -828,7 +828,7 @@ class StableDiffusion:
             scheduler: Denoiser sigma scheduler (default: discrete).
             sample_method: Sampling method (default: euler for Flux/SD3/Wan, euler_a otherwise).
             sample_steps: Number of sample steps.
-            eta: Eta in DDIM, only for DDIM and TCD.
+            eta: Noise multiplier (default: 0 for ddim_trailing, tcd, res_multistep and res_2s; 1 for euler_a and dpm++2s_a).
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
             sigmas: Custom sigma values for the sampler, comma-separated (e.g. "14.61,7.8,3.5,0.0").
             flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
@@ -1974,6 +1974,7 @@ GGML_TYPE_MAP = {
     # "iq4_nl_4_8": GGMLType.SD_TYPE_IQ4_NL_4_8,
     # "iq4_nl_8_8": GGMLType.SD_TYPE_IQ4_NL_8_8,
     "mxfp4": GGMLType.SD_TYPE_MXFP4,
+    "NVFP4": GGMLType.SD_TYPE_NVFP4,
     "default": GGMLType.SD_TYPE_COUNT,  # Default
 }
 
