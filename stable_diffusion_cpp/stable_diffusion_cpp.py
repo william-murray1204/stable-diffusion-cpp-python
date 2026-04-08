@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import ctypes
 import pathlib
@@ -40,6 +41,15 @@ def _load_shared_library(lib_base_name: str):
             _base_path / f"lib{lib_base_name}.dylib",
         ]
     elif sys.platform == "win32":
+        # Load the HIP runtime if present in the lib directory
+        def extract_version(p: pathlib.Path):
+            m = re.search(r"amdhip64[_\-]?(\d+)", p.name)
+            return int(m.group(1)) if m else 0
+
+        hip_dlls = sorted(_base_path.glob("amdhip64*.dll"), key=extract_version, reverse=True)
+        if hip_dlls:
+            ctypes.CDLL(str(hip_dlls[0]), winmode=0x8)
+
         _lib_paths += [
             _base_path / f"{lib_base_name}.dll",
             _base_path / f"lib{lib_base_name}.dll",
@@ -144,9 +154,9 @@ byref = ctypes.byref  # type: ignore
 ggml_abort_callback = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p)
 
 
-################################################
-# stable-diffusion.h bindings
-################################################
+# ===========================================
+# include/stable-diffusion.h bindings
+# ===========================================
 
 
 # enum rng_type_t {
@@ -369,6 +379,7 @@ class LoraApplyMode(IntEnum):
 #     SD_CACHE_DBCACHE,
 #     SD_CACHE_TAYLORSEER,
 #     SD_CACHE_CACHE_DIT,
+#     SD_CACHE_SPECTRUM,
 # };
 class SDCacheMode(IntEnum):
     SD_CACHE_DISABLED = 0
@@ -377,6 +388,7 @@ class SDCacheMode(IntEnum):
     SD_CACHE_DBCACHE = 3
     SD_CACHE_TAYLORSEER = 4
     SD_CACHE_CACHE_DIT = 5
+    SD_CACHE_SPECTRUM = 6
 
 
 # ===========================================
@@ -402,7 +414,7 @@ class sd_embedding_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool enable_mmap; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool flash_attn; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool circular_x; bool circular_y; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; bool qwen_image_zero_cond_t; float flow_shift; } sd_ctx_params_t;
+# typedef struct { const char* model_path; const char* clip_l_path; const char* clip_g_path; const char* clip_vision_path; const char* t5xxl_path; const char* llm_path; const char* llm_vision_path; const char* diffusion_model_path; const char* high_noise_diffusion_model_path; const char* vae_path; const char* taesd_path; const char* control_net_path; const sd_embedding_t* embeddings; uint32_t embedding_count; const char* photo_maker_path; const char* tensor_type_rules; bool vae_decode_only; bool free_params_immediately; int n_threads; enum sd_type_t wtype; enum rng_type_t rng_type; enum rng_type_t sampler_rng_type; enum prediction_t prediction; enum lora_apply_mode_t lora_apply_mode; bool offload_params_to_cpu; bool enable_mmap; bool keep_clip_on_cpu; bool keep_control_net_on_cpu; bool keep_vae_on_cpu; bool flash_attn; bool diffusion_flash_attn; bool tae_preview_only; bool diffusion_conv_direct; bool vae_conv_direct; bool circular_x; bool circular_y; bool force_sdxl_vae_conv_scale; bool chroma_use_dit_mask; bool chroma_use_t5_mask; int chroma_t5_mask_pad; bool qwen_image_zero_cond_t; } sd_ctx_params_t;
 class sd_ctx_params_t(ctypes.Structure):
     _fields_ = [
         ("model_path", ctypes.c_char_p),
@@ -446,7 +458,6 @@ class sd_ctx_params_t(ctypes.Structure):
         ("chroma_use_t5_mask", ctypes.c_bool),
         ("chroma_t5_mask_pad", ctypes.c_int),
         ("qwen_image_zero_cond_t", ctypes.c_bool),
-        ("flow_shift", ctypes.c_float),
     ]
 
 
@@ -586,7 +597,7 @@ class sd_guidance_params_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { sd_guidance_params_t guidance; enum scheduler_t scheduler; enum sample_method_t sample_method; int sample_steps; float eta; int shifted_timestep; float* custom_sigmas; int custom_sigmas_count; } sd_sample_params_t;
+# typedef struct { sd_guidance_params_t guidance; enum scheduler_t scheduler; enum sample_method_t sample_method; int sample_steps; float eta; int shifted_timestep; float* custom_sigmas; int custom_sigmas_count; float flow_shift; } sd_sample_params_t;
 class sd_sample_params_t(ctypes.Structure):
     _fields_ = [
         ("guidance", sd_guidance_params_t),
@@ -597,6 +608,7 @@ class sd_sample_params_t(ctypes.Structure):
         ("shifted_timestep", ctypes.c_int),
         ("custom_sigmas", ctypes.POINTER(ctypes.c_float)),
         ("custom_sigmas_count", ctypes.c_int),
+        ("flow_shift", ctypes.c_float),
     ]
 
 
@@ -605,7 +617,7 @@ class sd_sample_params_t(ctypes.Structure):
 # -------------------------------------------
 
 
-# typedef struct { enum sd_cache_mode_t mode; float reuse_threshold; float start_percent; float end_percent; float error_decay_rate; bool use_relative_threshold; bool reset_error_on_compute; int Fn_compute_blocks; int Bn_compute_blocks; float residual_diff_threshold; int max_warmup_steps; int max_cached_steps; int max_continuous_cached_steps; int taylorseer_n_derivatives; int taylorseer_skip_interval; const char* scm_mask; bool scm_policy_dynamic; } sd_cache_params_t;
+# typedef struct { enum sd_cache_mode_t mode; float reuse_threshold; float start_percent; float end_percent; float error_decay_rate; bool use_relative_threshold; bool reset_error_on_compute; int Fn_compute_blocks; int Bn_compute_blocks; float residual_diff_threshold; int max_warmup_steps; int max_cached_steps; int max_continuous_cached_steps; int taylorseer_n_derivatives; int taylorseer_skip_interval; const char* scm_mask; bool scm_policy_dynamic; float spectrum_w; int spectrum_m; float spectrum_lam; int spectrum_window_size; float spectrum_flex_window; int spectrum_warmup_steps; float spectrum_stop_percent; } sd_cache_params_t;
 class sd_cache_params_t(ctypes.Structure):
     _fields_ = [
         ("mode", ctypes.c_int),  # SDCacheMode
@@ -625,6 +637,13 @@ class sd_cache_params_t(ctypes.Structure):
         ("taylorseer_skip_interval", ctypes.c_int),
         ("scm_mask", ctypes.c_char_p),
         ("scm_policy_dynamic", ctypes.c_bool),
+        ("spectrum_w", ctypes.c_float),
+        ("spectrum_m", ctypes.c_int),
+        ("spectrum_lam", ctypes.c_float),
+        ("spectrum_window_size", ctypes.c_int),
+        ("spectrum_flex_window", ctypes.c_float),
+        ("spectrum_warmup_steps", ctypes.c_int),
+        ("spectrum_stop_percent", ctypes.c_float),
     ]
 
 
@@ -777,16 +796,18 @@ def sd_get_default_sample_method(
 # -------------------------------------------
 
 
-# SD_API enum scheduler_t sd_get_default_scheduler(const sd_ctx_t* sd_ctx);
+# SD_API enum scheduler_t sd_get_default_scheduler(const sd_ctx_t* sd_ctx, enum sample_method_t sample_method);
 @ctypes_function(
     "sd_get_default_scheduler",
     [
         sd_ctx_t_p_ctypes,  # sd_ctx
+        ctypes.c_int,  # sample_method
     ],
     ctypes.c_int,  # Scheduler
 )
 def sd_get_default_scheduler(
     sd_ctx: sd_ctx_t_p,
+    sample_method: SampleMethod,
     /,
 ) -> Optional[Scheduler]: ...
 
@@ -1032,7 +1053,7 @@ sd_progress_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int, ctypes
 @ctypes_function(
     "sd_set_progress_callback",
     [
-        ctypes.c_void_p,  # sd_progress_cb_t
+        ctypes.c_void_p,  # cb
         ctypes.c_void_p,  # data
     ],
     None,
@@ -1060,7 +1081,7 @@ sd_preview_callback = ctypes.CFUNCTYPE(
 @ctypes_function(
     "sd_set_preview_callback",
     [
-        ctypes.c_void_p,  # sd_preview_cb_t
+        ctypes.c_void_p,  # cb
         ctypes.c_int,  # mode
         ctypes.c_int,  # interval
         ctypes.c_bool,  # denoised
@@ -1092,7 +1113,10 @@ sd_log_callback = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_char_p, ctypes.c
 # SD_API void sd_set_log_callback(sd_log_cb_t sd_log_cb, void* data);
 @ctypes_function(
     "sd_set_log_callback",
-    [ctypes.c_void_p, ctypes.c_void_p],
+    [
+        ctypes.c_void_p,  # sd_log_cb
+        ctypes.c_void_p,  # data
+    ],
     None,
 )
 def sd_set_log_callback(

@@ -73,7 +73,6 @@ class StableDiffusion:
         chroma_use_t5_mask: bool = False,
         chroma_t5_mask_pad: int = 1,
         qwen_image_zero_cond_t: bool = False,
-        flow_shift: float = float("inf"),
         image_resize_method: str = "crop",
         verbose: bool = True,
     ):
@@ -132,7 +131,6 @@ class StableDiffusion:
             chroma_use_t5_mask: Use T5 mask for Chroma.
             chroma_t5_mask_pad: T5 mask padding size of Chroma.
             qwen_image_zero_cond_t: Enable zero_cond_t for Qwen image.
-            flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
             image_resize_method: Method to resize images for init, mask, control and reference images ("crop" or "resize").
             verbose: Print verbose output.
 
@@ -187,7 +185,6 @@ class StableDiffusion:
         self.chroma_use_t5_mask = chroma_use_t5_mask
         self.chroma_t5_mask_pad = chroma_t5_mask_pad
         self.qwen_image_zero_cond_t = qwen_image_zero_cond_t
-        self.flow_shift = flow_shift
         self.image_resize_method = image_resize_method
         self._stack = contextlib.ExitStack()
 
@@ -284,7 +281,6 @@ class StableDiffusion:
                     chroma_use_t5_mask=self.chroma_use_t5_mask,
                     chroma_t5_mask_pad=self.chroma_t5_mask_pad,
                     qwen_image_zero_cond_t=self.qwen_image_zero_cond_t,
-                    flow_shift=self.flow_shift,
                     verbose=self.verbose,
                 )
             )
@@ -346,6 +342,7 @@ class StableDiffusion:
         eta: float = 0.0,
         timestep_shift: int = 0,
         sigmas: Optional[str] = None,
+        flow_shift: float = float("inf"),
         # slg_params
         skip_layers: List[int] = [7, 8, 9],
         skip_layer_start: float = 0.01,
@@ -379,6 +376,13 @@ class StableDiffusion:
         cache_max_continuous_cached_steps: int = -1,
         cache_taylorseer_n_derivatives: int = 1,
         cache_taylorseer_skip_interval: int = 1,
+        cache_spectrum_w: float = 0.40,
+        cache_spectrum_m: int = 3,
+        cache_spectrum_lam: float = 1.0,
+        cache_spectrum_window_size: int = 2,
+        cache_spectrum_flex_window: float = 0.5,
+        cache_spectrum_warmup_steps: int = 4,
+        cache_spectrum_stop_percent: float = 0.9,
         scm_mask: str = "",
         scm_policy: Literal["dynamic", "static"] = "dynamic",
         # ---
@@ -412,6 +416,7 @@ class StableDiffusion:
             eta: Eta in DDIM, only for DDIM and TCD.
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
             sigmas: Custom sigma values for the sampler, comma-separated (e.g. "14.61,7.8,3.5,0.0").
+            flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
             skip_layers: Layers to skip for SLG steps (SLG will be enabled at step int([STEPS]x[START]) and disabled at int([STEPS]x[END])).
             skip_layer_start: SLG enabling point.
             skip_layer_end: SLG disabling point.
@@ -552,16 +557,16 @@ class StableDiffusion:
         rel_size_x, rel_size_y = self._parse_tile_size(vae_relative_tile_size, as_float=True)
 
         # -------------------------------------------
-        # Scheduler/Sample Method
+        # Sample Method/Scheduler
         # -------------------------------------------
-
-        scheduler = self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler", allow_none=True)
-        if scheduler is None:
-            scheduler = sd_cpp.sd_get_default_scheduler(self.model)
 
         sample_method = self._validate_and_set_input(sample_method, SAMPLE_METHOD_MAP, "sample_method", allow_none=True)
         if sample_method is None:
             sample_method = sd_cpp.sd_get_default_sample_method(self.model)
+
+        scheduler = self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler", allow_none=True)
+        if scheduler is None:
+            scheduler = sd_cpp.sd_get_default_scheduler(self.model, sample_method)
 
         # -------------------------------------------
         # Sigmas
@@ -590,6 +595,7 @@ class StableDiffusion:
         # -------------------------------------------
 
         _cache_params = sd_cpp.sd_cache_params_t(
+            # General cache params
             mode=cache_mode,
             reuse_threshold=cache_reuse_threshold,
             start_percent=cache_start_percent,
@@ -602,8 +608,18 @@ class StableDiffusion:
             residual_diff_threshold=cache_residual_diff_threshold,
             max_warmup_steps=cache_max_warmup_steps,
             max_continuous_cached_steps=cache_max_continuous_cached_steps,
+            # Taylorseer cache params
             taylorseer_n_derivatives=cache_taylorseer_n_derivatives,
             taylorseer_skip_interval=cache_taylorseer_skip_interval,
+            # Spectrum cache params
+            spectrum_w=cache_spectrum_w,
+            spectrum_m=cache_spectrum_m,
+            spectrum_lam=cache_spectrum_lam,
+            spectrum_window_size=cache_spectrum_window_size,
+            spectrum_flex_window=cache_spectrum_flex_window,
+            spectrum_warmup_steps=cache_spectrum_warmup_steps,
+            spectrum_stop_percent=cache_spectrum_stop_percent,
+            # General SCM params
             scm_mask=scm_mask.encode("utf-8"),
             scm_policy_dynamic=scm_policy,
         )
@@ -646,6 +662,7 @@ class StableDiffusion:
             shifted_timestep=timestep_shift,
             custom_sigmas=_custom_sigmas,
             custom_sigmas_count=_custom_sigmas_count,
+            flow_shift=flow_shift,
         )
 
         _params = sd_cpp.sd_img_gen_params_t(
@@ -738,6 +755,7 @@ class StableDiffusion:
         eta: float = 0.0,
         timestep_shift: int = 0,
         sigmas: Optional[str] = None,
+        flow_shift: float = float("inf"),
         # slg_params
         skip_layers: List[int] = [7, 8, 9],
         skip_layer_start: float = 0.01,
@@ -813,6 +831,7 @@ class StableDiffusion:
             eta: Eta in DDIM, only for DDIM and TCD.
             timestep_shift: Shift timestep for NitroFusion models, default: 0, recommended N for NitroSD-Realism around 250 and 500 for NitroSD-Vibrant.
             sigmas: Custom sigma values for the sampler, comma-separated (e.g. "14.61,7.8,3.5,0.0").
+            flow_shift: Shift value for Flow models like SD3.x or WAN (default: auto).
             skip_layers: Layers to skip for SLG steps (SLG will be enabled at step int([STEPS]x[START]) and disabled at int([STEPS]x[END])).
             skip_layer_start: SLG enabling point.
             skip_layer_end: SLG disabling point.
@@ -965,12 +984,8 @@ class StableDiffusion:
         rel_size_x, rel_size_y = self._parse_tile_size(vae_relative_tile_size, as_float=True)
 
         # -------------------------------------------
-        # Scheduler/Sample Method
+        # Sample Method/Scheduler
         # -------------------------------------------
-
-        scheduler = self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler", allow_none=True)
-        if scheduler is None:
-            scheduler = sd_cpp.sd_get_default_scheduler(self.model)
 
         # "sample_method_count" is not valid here (it will crash)
         sample_method = self._validate_and_set_input(
@@ -982,18 +997,22 @@ class StableDiffusion:
         if sample_method is None:
             sample_method = sd_cpp.sd_get_default_sample_method(self.model)
 
-        # High Noise
-        high_noise_scheduler = self._validate_and_set_input(
-            high_noise_scheduler, SCHEDULER_MAP, "high_noise_scheduler", allow_none=True
-        )
-        if high_noise_scheduler is None:
-            high_noise_scheduler = scheduler
+        scheduler = self._validate_and_set_input(scheduler, SCHEDULER_MAP, "scheduler", allow_none=True)
+        if scheduler is None:
+            scheduler = sd_cpp.sd_get_default_scheduler(self.model, sample_method)
 
+        # High Noise
         high_noise_sample_method = self._validate_and_set_input(
             high_noise_sample_method, SAMPLE_METHOD_MAP, "high_noise_sample_method", allow_none=True
         )
         if high_noise_sample_method is None:
             high_noise_sample_method = sample_method
+
+        high_noise_scheduler = self._validate_and_set_input(
+            high_noise_scheduler, SCHEDULER_MAP, "high_noise_scheduler", allow_none=True
+        )
+        if high_noise_scheduler is None:
+            high_noise_scheduler = scheduler
 
         # -------------------------------------------
         # Sigmas
@@ -1043,6 +1062,7 @@ class StableDiffusion:
             shifted_timestep=timestep_shift,
             custom_sigmas=_custom_sigmas,
             custom_sigmas_count=_custom_sigmas_count,
+            flow_shift=flow_shift,
         )
 
         # -------------------------------------------
@@ -1099,6 +1119,7 @@ class StableDiffusion:
             shifted_timestep=timestep_shift,
             custom_sigmas=_custom_sigmas,
             custom_sigmas_count=_custom_sigmas_count,
+            flow_shift=flow_shift,
         )
 
         _params = sd_cpp.sd_vid_gen_params_t(
@@ -1978,4 +1999,5 @@ SD_CACHE_MODE_MAP = {
     "dbcache": SDCacheMode.SD_CACHE_DBCACHE,
     "taylorseer": SDCacheMode.SD_CACHE_TAYLORSEER,
     "cachedit": SDCacheMode.SD_CACHE_CACHE_DIT,
+    "spectrum": SDCacheMode.SD_CACHE_SPECTRUM,
 }
