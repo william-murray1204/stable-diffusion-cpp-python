@@ -53,12 +53,7 @@ sdist.include = [
     "vendor/stable-diffusion.cpp/ggml/.git/HEAD",
     "vendor/stable-diffusion.cpp/ggml/.git/config",
     "vendor/stable-diffusion.cpp/ggml/.git/refs/**",
-    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/HEAD",
-    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/config",
-    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/refs/**",
-    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/HEAD",
-    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/config",
-    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/refs/**",
+    "vendor/stable-diffusion.cpp/thirdparty/**",
 ]
 sdist.exclude = [
     "assets",
