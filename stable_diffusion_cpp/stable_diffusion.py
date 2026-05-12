@@ -23,6 +23,7 @@ from stable_diffusion_cpp import (
     SDCacheMode,
     SampleMethod,
     LoraApplyMode,
+    SDHiresUpscaler,
 )
 
 
@@ -73,6 +74,7 @@ class StableDiffusion:
         chroma_use_t5_mask: bool = False,
         chroma_t5_mask_pad: int = 1,
         qwen_image_zero_cond_t: bool = False,
+        max_vram: float = 0,
         image_resize_method: str = "crop",
         verbose: bool = True,
     ):
@@ -131,6 +133,7 @@ class StableDiffusion:
             chroma_use_t5_mask: Use T5 mask for Chroma.
             chroma_t5_mask_pad: T5 mask padding size of Chroma.
             qwen_image_zero_cond_t: Enable zero_cond_t for Qwen image.
+            max_vram: Maximum VRAM budget in GiB for graph-cut segmented execution. 0 disables graph splitting.
             image_resize_method: Method to resize images for init, mask, control and reference images ("crop" or "resize").
             verbose: Print verbose output.
 
@@ -185,6 +188,7 @@ class StableDiffusion:
         self.chroma_use_t5_mask = chroma_use_t5_mask
         self.chroma_t5_mask_pad = chroma_t5_mask_pad
         self.qwen_image_zero_cond_t = qwen_image_zero_cond_t
+        self.max_vram = max_vram
         self.image_resize_method = image_resize_method
         self._stack = contextlib.ExitStack()
 
@@ -281,6 +285,7 @@ class StableDiffusion:
                     chroma_use_t5_mask=self.chroma_use_t5_mask,
                     chroma_t5_mask_pad=self.chroma_t5_mask_pad,
                     qwen_image_zero_cond_t=self.qwen_image_zero_cond_t,
+                    max_vram=self.max_vram,
                     verbose=self.verbose,
                 )
             )
@@ -386,6 +391,16 @@ class StableDiffusion:
         scm_mask: str = "",
         scm_policy: Literal["dynamic", "static"] = "dynamic",
         # ---
+        hires: bool = False,
+        hires_path: str = "",
+        hires_upscaler: Union[str, SDHiresUpscaler, int, float] = "Latent",
+        hires_scale: float = 2.0,
+        hires_width: int = 0,
+        hires_height: int = 0,
+        hires_steps: int = 0,
+        hires_denoising_strength: float = 0.7,
+        hires_upscale_tile_size: int = 128,
+        # ---
         canny: bool = False,
         upscale_factor: int = 1,
         preview_method: Union[str, Preview, int, float] = "none",
@@ -436,6 +451,15 @@ class StableDiffusion:
             cache_mode: The caching method to use (default: disabled).
             scm_mask: SCM steps mask for cache-dit: comma-separated 0/1 (e.g., "1,1,1,0,0,1,0,0,1,0") - 1=compute, 0=can cache.
             scm_policy: SCM policy 'dynamic' or 'static'.
+            hires: Enable highres fix.
+            hires_path: Highres fix upscaler model path.
+            hires_upscaler: highres fix upscaler.
+            hires_scale: Highres fix scale when target size is not set.
+            hires_width: Highres fix target width, 0 to use `hires_scale`.
+            hires_height: Highres fix target height, 0 to use `hires_scale`.
+            hires_steps: Highres fix second pass sample steps, 0 to reuse `steps`.
+            hires_denoising_strength: Highres fix second pass denoising strength.
+            hires_upscale_tile_size: Highres fix upscaler tile size, reserved for model-backed upscalers.
             canny: Apply canny edge detection preprocessor to the `control_image`.
             upscale_factor: Run the ESRGAN upscaler this many times.
             preview_method: The preview method to use (default: none).
@@ -569,6 +593,12 @@ class StableDiffusion:
             scheduler = sd_cpp.sd_get_default_scheduler(self.model, sample_method)
 
         # -------------------------------------------
+        # Highres
+        # -------------------------------------------
+
+        hires_upscaler = self._validate_and_set_input(hires_upscaler, SD_HIRES_UPSCALER_MAP, "hires_upscaler")
+
+        # -------------------------------------------
         # Sigmas
         # -------------------------------------------
 
@@ -665,6 +695,18 @@ class StableDiffusion:
             flow_shift=flow_shift,
         )
 
+        _hires_params = sd_cpp.sd_hires_params_t(
+            enabled=hires,
+            path=hires_path.encode("utf-8"),
+            upscaler=hires_upscaler,
+            scale=hires_scale,
+            width=hires_width,
+            height=hires_height,
+            steps=hires_steps,
+            denoising_strength=hires_denoising_strength,
+            upscale_tile_size=hires_upscale_tile_size,
+        )
+
         _params = sd_cpp.sd_img_gen_params_t(
             loras=_lora_array,
             lora_count=_lora_count,
@@ -688,6 +730,7 @@ class StableDiffusion:
             pm_params=_pm_params,
             vae_tiling_params=_vae_tiling_params,
             cache=_cache_params,
+            hires=_hires_params,
         )
 
         # Log system info
@@ -1905,6 +1948,7 @@ SAMPLE_METHOD_MAP = {
     "tcd": SampleMethod.TCD_SAMPLE_METHOD,
     "res_multistep": SampleMethod.RES_MULTISTEP_SAMPLE_METHOD,
     "res_2s": SampleMethod.RES_2S_SAMPLE_METHOD,
+    "er_sde": SampleMethod.ER_SDE_SAMPLE_METHOD,
     "sample_method_count": SampleMethod.SAMPLE_METHOD_COUNT,
 }
 
@@ -2001,4 +2045,19 @@ SD_CACHE_MODE_MAP = {
     "taylorseer": SDCacheMode.SD_CACHE_TAYLORSEER,
     "cachedit": SDCacheMode.SD_CACHE_CACHE_DIT,
     "spectrum": SDCacheMode.SD_CACHE_SPECTRUM,
+}
+
+
+SD_HIRES_UPSCALER_MAP = {
+    "none": SDHiresUpscaler.SD_HIRES_UPSCALER_NONE,
+    "latent": SDHiresUpscaler.SD_HIRES_UPSCALER_LATENT,
+    "latent_nearest": SDHiresUpscaler.SD_HIRES_UPSCALER_LATENT_NEAREST,
+    "latent_nearest_exact": SDHiresUpscaler.SD_HIRES_UPSCALER_LATENT_NEAREST_EXACT,
+    "latent_antialiased": SDHiresUpscaler.SD_HIRES_UPSCALER_LATENT_ANTIALIASED,
+    "latent_bicubic": SDHiresUpscaler.SD_HIRES_UPSCALER_LATENT_BICUBIC,
+    "latent_bicubic_antialiased": SDHiresUpscaler.SD_HIRES_UPSCALER_LATENT_BICUBIC_ANTIALIASED,
+    "lanczos": SDHiresUpscaler.SD_HIRES_UPSCALER_LANCZOS,
+    "nearest": SDHiresUpscaler.SD_HIRES_UPSCALER_NEAREST,
+    "model": SDHiresUpscaler.SD_HIRES_UPSCALER_MODEL,
+    "upscaler_count": SDHiresUpscaler.SD_HIRES_UPSCALER_COUNT,
 }

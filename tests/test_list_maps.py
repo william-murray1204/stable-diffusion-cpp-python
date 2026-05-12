@@ -9,6 +9,7 @@ from stable_diffusion_cpp import (
     SAMPLE_METHOD_MAP,
     LORA_APPLY_MODE_MAP,
     SD_CACHE_MODE_MAP,
+    SD_HIRES_UPSCALER_MAP,
 )
 
 
@@ -22,6 +23,7 @@ def test_list_maps():
         "Preview methods": PREVIEW_MAP,
         "LoRA apply modes": LORA_APPLY_MODE_MAP,
         "SD cache modes": SD_CACHE_MODE_MAP,
+        "SD hires upscalers": SD_HIRES_UPSCALER_MAP,
     }
 
     with open(f"{OUTPUT_DIR}/list_maps.txt", "w") as f:

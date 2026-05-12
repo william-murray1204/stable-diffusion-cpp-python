@@ -50,14 +50,29 @@ sdist.include = [
     "vendor/stable-diffusion.cpp/.git/HEAD",
     "vendor/stable-diffusion.cpp/.git/config",
     "vendor/stable-diffusion.cpp/.git/refs/**",
+    "vendor/stable-diffusion.cpp/ggml/.git/HEAD",
+    "vendor/stable-diffusion.cpp/ggml/.git/config",
+    "vendor/stable-diffusion.cpp/ggml/.git/refs/**",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/HEAD",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/config",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/refs/**",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/HEAD",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/config",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/refs/**",
 ]
 sdist.exclude = [
     "assets",
-    "vendor/stable-diffusion.cpp/assets",
-    ".git/objects/**",
-    "vendor/stable-diffusion.cpp/.git/objects/**",
     ".git/logs/**",
+    ".git/objects/**",
+    "vendor/stable-diffusion.cpp/assets",
+    "vendor/stable-diffusion.cpp/.git/objects/**",
     "vendor/stable-diffusion.cpp/.git/logs/**",
+    "vendor/stable-diffusion.cpp/ggml/.git/objects/**",
+    "vendor/stable-diffusion.cpp/ggml/.git/logs/**",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/objects/**",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebm/.git/logs/**",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/objects/**",
+    "vendor/stable-diffusion.cpp/thirdparty/libwebp/.git/logs/**",
 ]
 
 [tool.scikit-build.metadata.version]

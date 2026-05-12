@@ -58,6 +58,7 @@ class _StableDiffusionModel:
         chroma_use_t5_mask: bool,
         chroma_t5_mask_pad: int,
         qwen_image_zero_cond_t: bool,
+        max_vram: float,
         verbose: bool,
     ):
         self._exit_stack = ExitStack()
@@ -104,6 +105,7 @@ class _StableDiffusionModel:
             chroma_use_t5_mask=chroma_use_t5_mask,
             chroma_t5_mask_pad=chroma_t5_mask_pad,
             qwen_image_zero_cond_t=qwen_image_zero_cond_t,
+            max_vram=max_vram,
         )
 
         # Load the free_sd_ctx function
